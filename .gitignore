@@ -1,0 +1,7 @@
+.idea/
+__pycache__/
+*/__pycache__/
+resources/
+venv/
+test1.py
+test2.py
