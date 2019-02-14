@@ -26,6 +26,11 @@ import aiohttp
 import math
 from discord.ext import commands
 from tabulate import tabulate
+import datetime
+import json
+import numpy as np
+from bs4 import BeautifulSoup
+import discord
 
 
 async def parse_cluedata(results: tuple):
@@ -51,7 +56,32 @@ async def parse_cluedata(results: tuple):
     return result
 
 
-async def separate_thousands(scorelist: list, gains: bool = False):
+async def calculate_gains(new_highscores: list, old_highscores: list):
+    """
+    Calculate difference between new and old highscores. The highscores need to have all the data that osrs api gives.
+    The data inside can be either in string of int format.
+
+    :param new_highscores: New or current user highscores as list of lists
+    :param old_highscores: Old user highscores as list of lists
+    :return: Total difference in user highscores as list of lists
+    """
+    new_skills = np.array(new_highscores[:24], dtype=int)
+    old_skills = np.array(old_highscores[:24], dtype=int)
+    new_minigames = np.array(new_highscores[25:], dtype=int)
+    old_minigames = np.array(old_highscores[25:], dtype=int)
+
+    skills_difference = new_skills - old_skills
+    minigames_difference = new_minigames - old_minigames
+
+    # Multiply every rank difference by -1 so they are positive if risen in highscores and vice versa
+    skills_difference[:, 0] *= -1
+    minigames_difference[:, 0] *= -1
+    gains = skills_difference.tolist() + minigames_difference.tolist()
+
+    return gains
+
+
+async def separate_thousands(scorelist: list, gains: bool):
 
     """
     Format the scorelist so the scorelist values have thousands separated with comma.
@@ -63,16 +93,17 @@ async def separate_thousands(scorelist: list, gains: bool = False):
     """
     for index, list_ in enumerate(scorelist):
         for index2, value in enumerate(list_):
-            value = int(value)
             if gains and value > 0:
                 separated = "{:+,}".format(value)
             else:
+                value = int(value)
                 separated = "{:,}".format(value)
             scorelist[index][index2] = separated
     return scorelist
 
 
-async def make_scoretable(highscores_data: list, username: str, gains: bool = False):
+async def make_scoretable(highscores_data: list, username: str, gains: bool = False, old_savedate: str = None,
+                          new_savedate: str = None):
     """
     Takes a list of lists that has users' highscore data and uses tabulate to make it into table format.
     Lists and sublists need to be in the same order as in Osrs official highscores and api ([Rank, Level, Xp]). Sublist
@@ -80,7 +111,9 @@ async def make_scoretable(highscores_data: list, username: str, gains: bool = Fa
 
     :param highscores_data: Data returned by Osrs highscores api splitted into list of lists
     :param username: Username of the account whose highscores are being handled
-    :param gains: Boolean parameter to determine the table header
+    :param gains: Boolean parameter to determine the table header and behaviour of separate_thousands
+    :param old_savedate: A date when user stats were last saved into database. Only needed for gains table
+    :param new_savedate: A date when user new stats are compared to old ones. Only needed for gains table
     :return:
     """
 
@@ -93,8 +126,8 @@ async def make_scoretable(highscores_data: list, username: str, gains: bool = Fa
     clues = highscores_data[26:32]
 
     # Separate thousands with comma
-    formatted_skills = await separate_thousands(skills)
-    formatted_clues = await separate_thousands(clues)
+    formatted_skills = await separate_thousands(skills, gains=gains)
+    formatted_clues = await separate_thousands(clues, gains=gains)
 
     # Insert row headers from above lists to highscores lists with corresponding indexes
     for skill in skills:
@@ -107,7 +140,7 @@ async def make_scoretable(highscores_data: list, username: str, gains: bool = Fa
     skilltable = tabulate(formatted_skills, tablefmt="orgtbl", headers=["Skill", "Rank", "Level", "Xp"])
     cluetable = tabulate(formatted_clues, tablefmt="orgtbl", headers=["Clue", "Rank", "Amount"])
     if gains:
-        table_header = "{:^50}".format(f"Gains for {username}")
+        table_header = "{:^46}\n{}".format(f"Gains for {username}", f"Between {old_savedate} - {new_savedate} UTC")
     else:
         table_header = "{:^50}".format(f"Stats of {username}")
 
@@ -199,25 +232,62 @@ class OsrsCog:
         await ctx.send(msg)
 
     @commands.command(name="wiki")
-    async def search_wiki(self, ctx, *, arg):
+    async def search_wiki(self, ctx, *, args):
         """
-        Search official Oldschool Runescape wiki and returns a link if any page is found.
+        Search official Oldschool Runescape wiki and returns a link if any page is found. If no page is found, try to
+        make list of "Did you mean" suggestions.
+
+        :param ctx:
+        :param args: Page name/search term given by user
         """
-        # TODO: Rework to check if pages exist and give possible fixed searches
-        search = "_".join(arg.split())
-        wikilink = f"https://oldschool.runescape.wiki/w/{search}"
-        response = await self.visit_website(wikilink)
-        if "This page doesn't exist on the wiki" in response:
-            await ctx.send("Could not find any pages with that keyword.")
-            return
+
+        # Try to make a wiki link straight from words given by user
+        page_name = "_".join(args.split())
+        base_link = "https://oldschool.runescape.wiki"
+        href = f"/w/{page_name}"
+        page_link = base_link + href
+        wiki_response = await self.visit_website(page_link)
+
+        # If previous link doesn't have any wiki page, try manual search in wiki
+        if f"This page doesn&#039;t exist on the wiki. Maybe it should?" in wiki_response:
+            hyperlinks = []
+            wiki_search_link = f"https://oldschool.runescape.wiki/w/Special:Search?search={page_name}"
+            wiki_search_resp = await self.visit_website(wiki_search_link)
+
+            # parse wiki search response and search for possible "did you mean" matches
+            search_resp_html = BeautifulSoup(wiki_search_resp, "html.parser")
+            search_resp_headings = search_resp_html.findAll("div", class_="mw-search-result-heading")
+            if len(search_resp_headings) == 0:
+                await ctx.send("Could not find any pages with your search.")
+                return
+
+            # Loop through 5 suggestions given by wiki search
+            # Discord cant handle links with ')' as a ending character properly so escape it if present
+            for heading in search_resp_headings[:5]:
+                href = heading.find("a")["href"]
+                if href[-1] == ")":
+                    href = list(href)
+                    href[-1] = "\\)"
+                    href = "".join(href)
+                page_title = heading.find("a")["title"]
+                hyperlinks.append(f"[{page_title}]({base_link}{href})")
+
+            embed = discord.Embed(title="Did you mean some of these?", description="\n".join(hyperlinks))
+            await ctx.send(embed=embed)
+
+        # The wiki link made from user words is valid. Disable discord link preview to prevent flooding the chat
         else:
-            await ctx.send(f"<{wikilink}>")
+            await ctx.send(f"<{page_link}>")
 
     @commands.command(name="anagram")
     async def get_anagram(self, ctx, *, search):
         """
-        Search for an anagram from database. If found, full solution is given. If more than one is found, give a list of
-        matches.
+        Search for an anagram from database. Search term is compared to all anagrams in the database with similar
+        start. In case of only one match, a full solution will be sent to discord. If multiple anagrams are found, send
+        a list of matches into discord.
+
+        :param ctx:
+        :param search: Any size of word or partial word to be used as a search term
         """
         self.bot.cursor.execute("SELECT * FROM anagrams WHERE ANAGRAM = %s;", [search])
         results = self.bot.cursor.fetchall()
@@ -238,8 +308,12 @@ class OsrsCog:
     @commands.command(name="cipher")
     async def get_cipher(self, ctx, *, search):
         """
-        Search for a cipher from database. If found, a full solution is given. If more than one is found, give a list of
-        matches.
+        Search for a cipher from database. Search term is compared to all ciphers in the database with similar
+        start. In case of only one match, a full solution will be sent to discord. If multiple ciphers are found, send
+        a list of matches into discord.
+
+        :param ctx:
+        :param search: Any size of word or partial word to be used as a search term
         """
         self.bot.cursor.execute("SELECT * FROM ciphers WHERE CIPHER = %s;", [search])
         results = self.bot.cursor.fetchall()
@@ -260,7 +334,11 @@ class OsrsCog:
     @commands.command(name="cryptic")
     async def get_cryptic(self, ctx, *, search):
         """
-        Search for a cryptic clue from database. If found, a full solution is given.
+        Search for a cryptic clue from database. Search term is compared to all cryptics in the database with similar
+        start. In case of only one match, a full solution will be sent to discord.
+
+        :param ctx:
+        :param search: Any size of word or partial word to be used as a search term
         """
         self.bot.cursor.execute("SELECT * FROM cryptics WHERE CRYPTIC LIKE %s;", [search + '%'])
         results = self.bot.cursor.fetchall()
@@ -275,10 +353,13 @@ class OsrsCog:
 
     @commands.command(name="stats", aliases=["ironstats", "uimstats", "hcstats", "dmmstats", "seasonstats",
                                              "tournamentstats"])
-    async def get_user_highscores(self, ctx, *, username):
+    async def send_user_highscores(self, ctx, *, username):
         """
         Search for user highscores from official Old School Runescape api. Search supports using different highscores
         for different type of characters. If highscore data is successfully found, send the current stats into chat.
+
+        :param ctx:
+        :param username: User whose stats are wanted to be searched
         """
         prefix_end = ctx.message.content.find("stats")
         prefix = ctx.message.content[:prefix_end].replace("!", "")
@@ -298,22 +379,83 @@ class OsrsCog:
             account_type = "normal"
 
         user_highscores = await self.get_highscores(username, account_type=account_type)
-        if user_highscores is None:
+        if not user_highscores:
             msg = "Could not find any highscores with that username."
         else:
             msg = await make_scoretable(user_highscores, username)
         await ctx.send(msg)
 
+    # noinspection PyBroadException
+    @commands.command(name="track")
+    async def track_player(self, ctx, *, track_args):
+        """
+        Saves accounts' username, highscores and account type with save date into database. This process is necessary
+        for calculating gains or saving old usernames later.
+
+        :param ctx:
+        :param track_args: A string where user has given account type (None = normal) and username
+        """
+
+        track_args_list = track_args.replace(", ", ",").split(",")
+
+        try:
+            account_type = track_args_list[0]
+            username = track_args_list[1]
+        except IndexError:
+            account_type = "normal"
+            username = track_args_list[0]
+        if account_type == "im":
+            account_type = "ironman"
+        elif account_type == "hc" or account_type == "hardcore":
+            account_type = "hcim"
+        elif account_type == "ultimate":
+            account_type = "uim"
+        elif account_type == "deadman":
+            account_type = "dmm"
+
+        current_highscores = await self.get_highscores(username, account_type)
+        if not current_highscores:
+            await ctx.send("Could not find any highscores with that account type or username.")
+            return
+        save_timestamp = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+        try:
+            self.bot.cursor.execute("""INSERT INTO tracked_players (USERNAME, OLD_NAMES, SAVEDATE, STATS, ACC_TYPE) 
+                                    VALUES (%s, %s, %s, %s, %s);""", [username.lower(), None, save_timestamp,
+                                                                      json.dumps(current_highscores), account_type])
+            self.bot.db.commit()
+            msg = f"Started tracking user {username}. Account type: {account_type}"
+        except:
+            msg = "This user is already being tracked."
+        await ctx.send(msg)
+
     @commands.command(name="gains")
     async def get_user_gains(self, ctx, *, username):
-        # current_highscores = await self.get_highscores(username, )
-        pass
+        """
+        Calculate user gains based on saved highscores and current highscores. Gains are formatted in table and sent to
+        discord.
 
-    @commands.command(name="track")
-    async def track_player(self, ctx, *, args):
-        # TODO: Separate the username and account type from args
-        # user_highscores = await self.get_highscores(username, account_type=account_type)
-        pass
+        :param ctx:
+        :param username: Username whose gains are wanted. User has to be tracked for this command to work.
+        """
+        self.bot.cursor.execute("""SELECT * FROM tracked_players WHERE USERNAME = %s;""", [username.lower()])
+        old_user_data = self.bot.cursor.fetchone()
+        if not old_user_data:
+            await ctx.send("This user is not being tracked.")
+            return
+        old_savedate = old_user_data[2]
+        old_highscores = json.loads(old_user_data[3])
+        account_type = old_user_data[4]
+        new_savedate = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+        new_highscores = await self.get_highscores(username, account_type)
+
+        gains = await calculate_gains(new_highscores, old_highscores)
+        scoretable = await make_scoretable(gains, username, gains=True, old_savedate=old_savedate,
+                                           new_savedate=new_savedate)
+
+        self.bot.cursor.execute("""UPDATE tracked_players SET SAVEDATE=%s, STATS=%s WHERE USERNAME=%s;""",
+                                [new_savedate, json.dumps(new_highscores), username])
+        self.bot.db.commit()
+        await ctx.send(scoretable)
 
 
 def setup(bot):

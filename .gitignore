@@ -1,6 +1,5 @@
 .idea/
 *__pycache__/
-resources/
+*credentials.json
 venv/
-test1.py
-test2.py
+test*

@@ -45,7 +45,7 @@ async def on_ready():
 
 # noinspection PyBroadException
 def run(name):
-    with open("resources\\Credentials.json") as credential_file:
+    with open("resources\\credentials.json") as credential_file:
         credentials = json.load(credential_file)
 
     bot_token = credentials["tokens"][name]
