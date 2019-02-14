@@ -107,14 +107,14 @@ async def make_scoretable(highscores_data: list, username: str, gains: bool = Fa
     """
     Takes a list of lists that has users' highscore data and uses tabulate to make it into table format.
     Lists and sublists need to be in the same order as in Osrs official highscores and api ([Rank, Level, Xp]). Sublist
-    elements can be either str or int, as long as they consist of 3 (skills) or 2 (clues) elements.
+    elements can be either str or int, as long as they consist of 3 (skills) or 2 (minigames) elements.
 
     :param highscores_data: Data returned by Osrs highscores api splitted into list of lists
     :param username: Username of the account whose highscores are being handled
     :param gains: Boolean parameter to determine the table header and behaviour of separate_thousands
     :param old_savedate: A date when user stats were last saved into database. Only needed for gains table
     :param new_savedate: A date when user new stats are compared to old ones. Only needed for gains table
-    :return:
+    :return: Skill and clue highscores combined inside discord codeblock quotes
     """
 
     skillnames = ["Total", "Attack", "Defence", "Strength", "Hitpoints", "Ranged", "Prayer", "Magic",
