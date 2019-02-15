@@ -41,6 +41,7 @@ async def parse_cluedata(results: tuple):
     :param results: A tuple of results with lengths of 5
     :return: A solution to given clue in list or a list of clues found with search terms
     """
+
     if len(results) == 1:
         match = results[0]
         solution = match[1]
@@ -65,6 +66,7 @@ async def calculate_gains(new_highscores: list, old_highscores: list):
     :param old_highscores: Old user highscores as list of lists
     :return: Total difference in user highscores as list of lists
     """
+
     new_skills = np.array(new_highscores[:24], dtype=int)
     old_skills = np.array(old_highscores[:24], dtype=int)
     new_minigames = np.array(new_highscores[25:], dtype=int)
@@ -82,7 +84,6 @@ async def calculate_gains(new_highscores: list, old_highscores: list):
 
 
 async def separate_thousands(scorelist: list, gains: bool):
-
     """
     Format the scorelist so the scorelist values have thousands separated with comma.
 
@@ -91,13 +92,14 @@ async def separate_thousands(scorelist: list, gains: bool):
     :return: List of lists which values are separated by comma and positive values have visible plus
              sign (if gains=True)
     """
+
     for index, list_ in enumerate(scorelist):
         for index2, value in enumerate(list_):
             if gains and value > 0:
-                separated = "{:+,}".format(value)
+                separated = f"{value:+,}"
             else:
                 value = int(value)
-                separated = "{:,}".format(value)
+                separated = f"{value:,}"
             scorelist[index][index2] = separated
     return scorelist
 
@@ -114,7 +116,7 @@ async def make_scoretable(highscores_data: list, username: str, gains: bool = Fa
     :param gains: Boolean parameter to determine the table header and behaviour of separate_thousands
     :param old_savedate: A date when user stats were last saved into database. Only needed for gains table
     :param new_savedate: A date when user new stats are compared to old ones. Only needed for gains table
-    :return: Skill and clue highscores combined inside discord codeblock quotes
+    :return: Skill and clue highscores combined inside of discord codeblock quotes
     """
 
     skillnames = ["Total", "Attack", "Defence", "Strength", "Hitpoints", "Ranged", "Prayer", "Magic",
@@ -148,6 +150,40 @@ async def make_scoretable(highscores_data: list, username: str, gains: bool = Fa
     return scoretable
 
 
+async def make_ehp_list(ehp_rates: dict):
+    """
+    Convert a dictionary of ehp xp's and xp rates into a string with level and xp rates. String is returned so the
+    levels and rates are one below another
+
+    :param ehp_rates: Dictionary of ehp xp and rates in format {xp: xph, ...}. Values can be either str or int
+    :return: String of 'minimum level: xph' pairs one below another
+    """
+
+    ehp_list = []
+
+    with open("resources\\experiences.json") as experience_file:
+        experiences_dict = json.load(experience_file)
+
+    experiences = experiences_dict.items()
+
+    # Loop through whole dictionary for skill and append level/xph pairs to list
+    for rate in list(ehp_rates.items()):
+        ehp_xp_required = int(rate[0].replace(",", ""))
+        ehp_xph = rate[1]
+
+        # Convert ehp xp's required to levels by comparing them to levels in experiences.json
+        # Closest level downwards is given
+        for experience_tuple in experiences:
+            level = experience_tuple[0]
+            level_xp_required = experience_tuple[1]
+            if level_xp_required > ehp_xp_required:
+                ehp_lvl_required = int(level) - 1
+                ehp_list.append(f"Lvl {ehp_lvl_required}+: {ehp_xph} xp/h")
+                break
+
+    return "\n".join(ehp_list)
+
+
 class OsrsCog:
 
     def __init__(self, bot):
@@ -171,6 +207,7 @@ class OsrsCog:
         :param account_type: Account type to determine the highscores and url type
         :return: User highscore data as a list of lists which values are in str
         """
+
         if account_type == "normal":
             header = "hiscore_oldschool"
         elif account_type == "ironman":
@@ -217,6 +254,7 @@ class OsrsCog:
         :param username: Username of the account whose ttm is wanted
         :return:
         """
+
         ttm_link = f"http://crystalmathlabs.com/tracker/api.php?type=ttm&player={username}"
         response = await self.visit_website(ttm_link, encoding="utf-8-sig")
         ehp = math.ceil(float(response))
@@ -232,7 +270,7 @@ class OsrsCog:
         await ctx.send(msg)
 
     @commands.command(name="wiki")
-    async def search_wiki(self, ctx, *, args):
+    async def search_osrs_wiki(self, ctx, *, args):
         """
         Search official Oldschool Runescape wiki and returns a link if any page is found. If no page is found, try to
         make list of "Did you mean" suggestions.
@@ -289,6 +327,7 @@ class OsrsCog:
         :param ctx:
         :param search: Any size of word or partial word to be used as a search term
         """
+
         self.bot.cursor.execute("SELECT * FROM anagrams WHERE ANAGRAM = %s;", [search])
         results = self.bot.cursor.fetchall()
         if not results:
@@ -315,6 +354,7 @@ class OsrsCog:
         :param ctx:
         :param search: Any size of word or partial word to be used as a search term
         """
+
         self.bot.cursor.execute("SELECT * FROM ciphers WHERE CIPHER = %s;", [search])
         results = self.bot.cursor.fetchall()
         if not results:
@@ -340,6 +380,7 @@ class OsrsCog:
         :param ctx:
         :param search: Any size of word or partial word to be used as a search term
         """
+
         self.bot.cursor.execute("SELECT * FROM cryptics WHERE CRYPTIC LIKE %s;", [search + '%'])
         results = self.bot.cursor.fetchall()
         if not results:
@@ -361,6 +402,7 @@ class OsrsCog:
         :param ctx:
         :param username: User whose stats are wanted to be searched
         """
+
         prefix_end = ctx.message.content.find("stats")
         prefix = ctx.message.content[:prefix_end].replace("!", "")
         if prefix == "iron":
@@ -410,8 +452,9 @@ class OsrsCog:
             account_type = "hcim"
         elif account_type == "ultimate":
             account_type = "uim"
-        elif account_type == "deadman":
-            account_type = "dmm"
+        if account_type not in ["normal", "ironman", "hcim", "uim"]:
+            await ctx.send("Invalid account type.")
+            return
 
         current_highscores = await self.get_highscores(username, account_type)
         if not current_highscores:
@@ -456,6 +499,192 @@ class OsrsCog:
                                 [new_savedate, json.dumps(new_highscores), username])
         self.bot.db.commit()
         await ctx.send(scoretable)
+
+    @commands.command(name="xp", aliases=["exp", "level", "lvl"])
+    async def required_xp(self, ctx, *, levels):
+        """
+        Get experience needed for given level or calculate experience needed for given level gap.
+
+        :param ctx:
+        :param levels: One Level or two levels separated by '-' given by user
+        :return:
+        """
+
+        with open("resources\\experiences.json") as xp_file:
+            xp_req_data = json.load(xp_file)
+
+        lvl_search = levels.replace(" - ", "-")
+        search_splitted = lvl_search.split("-")
+        if len(search_splitted) > 2:
+            await ctx.send("Invalid input. This Command supports only one or two levels.")
+            return
+
+        # Check viability for every element in list and convert to number if needed
+        for index, lvl in enumerate(search_splitted):
+            if lvl == "max":
+                lvl = "127"
+                search_splitted[index] = lvl
+            try:
+                lvl = int(lvl)
+                if lvl > 127:
+                    await ctx.send("Too big level was given. The biggest level in game can be given as 127 or max.")
+                    return
+                elif lvl < 1:
+                    await ctx.send("Too small level was given. The smallest level in game is 1.")
+                    return
+            except ValueError:
+                await ctx.send("Invalid input. Excessive characters or level(s) not convertible to number was given.")
+                return
+
+        if len(search_splitted) == 1:
+            target_level = search_splitted[0]
+            xp_required = xp_req_data[target_level]
+            base_message = f"Experience needed for level {target_level}: "
+        else:
+            start_level = search_splitted[0]
+            target_level = search_splitted[1]
+            xp_required = xp_req_data[target_level] - xp_req_data[start_level]
+            if xp_required < 0:
+                await ctx.send("Target level can't be smaller than starting level.")
+                return
+            base_message = f"Experience needed in level gap {start_level} - {target_level}: "
+
+        fmt_xp_required = f"{xp_required:,}".replace(",", " ")
+        complete_message = base_message + fmt_xp_required
+        await ctx.send(complete_message)
+
+    @commands.command(name="puzzle")
+    async def get_solved_puzzle(self, ctx, *, puzzle_name):
+        """
+        Give a link to an image of solved clue puzzle.
+
+        :param ctx:
+        :param puzzle_name: Name of the puzzle user wants
+        :return:
+        """
+
+        puzzle_name = puzzle_name.lower()
+        # Users tend to use shortened or simpler names for puzzles
+        if puzzle_name == "snake":
+            puzzle_name = "zulrah"
+        elif puzzle_name == "gnome":
+            puzzle_name = "gnome child"
+
+        try:
+            with open("resources\\solved_puzzles.json") as puzzle_file:
+                puzzle_links = json.load(puzzle_file)
+            puzzle_link = puzzle_links[puzzle_name]
+            message = puzzle_link
+        except KeyError:
+            message = "Couldn't find any puzzles with your search."
+
+        await ctx.send(message)
+
+    @commands.command(name="update")
+    async def osrs_latest_news(self, ctx):
+        """
+        Parse Old School Runescape homepage for latest news and send a link to it.
+
+        :param ctx:
+        :return:
+        """
+        update_dates = []
+        articles = {}
+        link = "http://oldschool.runescape.com/"
+        osrs_response = await self.visit_website(link)
+
+        osrs_response_html = BeautifulSoup(osrs_response, "html.parser")
+        for time_tag in osrs_response_html.findAll("time"):
+            update_dates.append(time_tag["datetime"])
+        latest_update_date = max(update_dates)
+
+        for div_tag in osrs_response_html.findAll("div", attrs={"class": "news-article__details"}):
+            if div_tag.time["datetime"] == latest_update_date:
+                p_tag = div_tag.p
+                article_link = p_tag.a["href"]
+                article_number = p_tag.a["id"][-1]
+                articles[article_number] = article_link
+
+        latest_article_number = min(articles.keys())
+        latest_update_link = articles[latest_article_number]
+        await ctx.send(f"Latest updates related to Old School Runescape: <{latest_update_link}>")
+
+    @commands.command
+    async def maps(self, ctx):
+        """
+        Send a link to clue maps wiki page.
+
+        :param ctx:
+        :return:
+        """
+        maps_link = "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Maps"
+        await ctx.send(f"<{maps_link}>")
+
+    @commands.command(name="ehp", aliases=["ironehp", "skillerehp", "f2pehp"])
+    async def calculate_ehp_rates(self, ctx, skillname):
+        """
+        Check and send Efficient Hours Played xp rates for given skill. Supports different ehp rate tables for
+        different account types.
+
+        :param ctx:
+        :param skillname: Name of the skill which ehp rates are wanted. The most common abbreviations are supported.
+        :return:
+        """
+
+        prefix_end = ctx.message.content.find("ehp")
+        prefix = ctx.message.content[:prefix_end].replace("!", "")
+        if not prefix:
+            filename = "ehp"
+        elif prefix == "iron":
+            filename = "ehp_ironman"
+        elif prefix == "skiller":
+            filename = "ehp_skiller"
+        elif prefix == "f2p":
+            filename = "ehp_free"
+        else:
+            return
+
+        with open(f"resources\\{filename}.json") as ehp_file:
+            ehp_data = json.load(ehp_file)
+
+        # Users tend to use shortened names for some skills
+        if skillname == "att":
+            skillname = "attack"
+        elif skillname == "str":
+            skillname = "strength"
+        elif skillname == "def":
+            skillname = "defence"
+        elif skillname == "hp":
+            skillname = "hitpoints"
+        elif skillname == "range":
+            skillname = "ranged"
+        elif skillname == "pray":
+            skillname = "prayer"
+        elif skillname == "wc":
+            skillname = "woodcutting"
+        elif skillname == "fm":
+            skillname = "firemaking"
+        elif skillname == "agi":
+            skillname = "agility"
+        elif skillname == "thiev":
+            skillname = "thieving"
+        elif skillname == "rc":
+            skillname = "runecrafting"
+        elif skillname == "cons":
+            skillname = "construction"
+
+        try:
+            skill_ehp_rates = ehp_data[skillname]
+        except KeyError:
+            await ctx.send("Invalid skill name.")
+            return
+
+        if not skill_ehp_rates:
+            await ctx.send(f"There are no EHP rates for {skillname.capitalize()} for given account type.")
+            return
+
+        ehp_list = await make_ehp_list(skill_ehp_rates)
+        await ctx.send(f"EHP rates for {skillname.capitalize()}:\n\n{ehp_list}")
 
 
 def setup(bot):

@@ -65,5 +65,5 @@ def run(name):
 
 
 if __name__ == '__main__':
-    bot_name = "development"
-    run(bot_name)
+    bot_version = "development"
+    run(bot_version)
