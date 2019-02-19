@@ -1,0 +1,184 @@
+{
+    "vorkath": {
+        "Dragonbone necklace": "1/1000",
+        "Draconic visage": "1/5000",
+        "Skeletal visage": "1/5000",
+        "Jar of decay": "1/3000",
+        "Vorki": "1/3000"
+    },
+    "corporeal beast": {
+        "Spectral sigil": "1/1365",
+        "Arcane sigil": "1/1365",
+        "Elysian sigil": "1/4095",
+        "Pet dark core": "1/5000",
+        "Holy elixir": "1/171",
+        "Spirit shield": "1/64"
+    },
+    "zulrah": {
+        "Tanzanite fang": "1/512",
+        "Magic fang": "1/512",
+        "Serpentine visage": "1/512",
+        "Uncut onyx": "1/512",
+        "Magma mutagen": "1/6554",
+        "Tanzanite mutagen": "1/6554",
+        "Pet snakeling": "1/4000",
+        "Jar of swamp": "1/3000"
+    },
+    "skotizo": {
+        "Shield left half": "1/100",
+        "Jar of darkness": "1/2500",
+        "Skotos": "1/65",
+        "Dark claw": "1/25",
+        "Uncut onyx": "1/1000"
+    },
+    "grotesque guardians": {
+        "Granite gloves": "1/500",
+        "Granite ring": "1/500",
+        "Granite hammer": "1/750",
+        "Black tourmaline core": "1/1000",
+        "Noon": "1/3000",
+        "Jar of stone": "1/5000"
+    },
+    "cerberus": {
+        "Primordial crystal": "1/512",
+        "Pegasian crystal": "1/512",
+        "Eternal crystal": "1/512",
+        "Smouldering stone": "1/512",
+        "Key master teleport": "1/64",
+        "Jar of souls": "1/2000",
+        "Hellpuppy": "1/3000"
+    },
+    "callisto": {
+        "Dragon pickaxe": "1/171",
+        "Dragon 2h sword": "1/256",
+        "Tyrannical ring": "1/512",
+        "Long bone": "1/400",
+        "Callisto cub": "1/2000",
+        "Curved bone": "1/5000"
+    },
+    "abyssal sire": {
+        "Bludgeon claw": "1/206",
+        "Bludgeon spine": "1/206",
+        "Bludgeon axon": "1/206",
+        "Abyssal dagger": "1/492",
+        "Jar of miasma": "1/984",
+        "Abyssal whip": "1/1066",
+        "Abyssal head": "1/1280",
+        "Abyssal orphan": "1/2560"
+    },
+    "kalphite queen": {
+        "Dragon chainbody": "1/128",
+        "Dragon 2h sword": "1/256",
+        "Kq head": "1/128",
+        "Jar of sand": "1/2000",
+        "Kalphite princess": "1/3000"
+    },
+    "general graardor": {
+        "Bandos chestplate": "1/384",
+        "Bandos tassets": "1/384",
+        "Bandos boots": "1/384",
+        "Godsword shard 1": "1/768",
+        "Godsword shard 2": "1/768",
+        "Godsword shard 3": "1/768",
+        "Long bone": "1/400",
+        "Bandos hilt": "1/508",
+        "Curved bone": "1/5000",
+        "Pet general graardor": "1/5000"
+    },
+    "giant mole": {
+        "Long bone": "1/400",
+        "Baby mole": "1/3000",
+        "Curved bone": "1/5000"
+    },
+    "kraken": {
+        "Trident of the seas (full)": "1/512",
+        "Dragonstone ring": "1/128",
+        "Kraken tentacle": "1/300",
+        "Jar of dirt": "1/1000",
+        "Pet kraken": "1/3000"
+    },
+    "king black dragon": {
+        "Dragon med helm": "1/128",
+        "Dragon pickaxe": "1/1500",
+        "Kbd heads": "1/128",
+        "Prince black dragon": "1/3000",
+        "Draconic visage": "1/5000"
+    },
+    "kree'arra": {
+        "Armadyl helmet": "1/384",
+        "Armadyl chestplate": "1/384",
+        "Armadyl chainskirt": "1/384",
+        "Godsword shard 1": "1/768",
+        "Godsword shard 2": "1/768",
+        "Godsword shard 3": "1/768",
+        "Long bone": "1/400",
+        "Armadyl hilt": "1/508",
+        "Curved bone": "1/5000",
+        "Pet kree'arra": "1/5000"
+    },
+    "scorpia": {
+        "Dragon scimitar": "1/128",
+        "Odium shard 3": "1/256",
+        "Malediction shard 3": "1/256",
+        "Scorpia's offspring": "1/2000"
+    },
+    "thermonuclear smoke devil": {
+        "Ancient staff": "1/129",
+        "Smoke battlestaff": "1/512",
+        "Occult necklace": "1/350",
+        "Dragon chainbody": "1/2000",
+        "Crystal key": "1/128",
+        "Pet smoke devil": "1/3000"
+    },
+    "venenatis": {
+        "Dragon pickaxe": "1/171",
+        "Dragon 2h sword": "1/256",
+        "Treasonous ring": "1/512",
+        "Long bone": "1/400",
+        "Venenatis spiderling": "1/2000",
+        "Curved bone": "1/5000"
+    },
+    "vet'ion": {
+        "Dragon pickaxe": "1/171",
+        "Dragon 2h sword": "1/256",
+        "Ring of the gods": "1/512",
+        "Vet'ion jr.": "1/2000",
+        "Curved bone": "1/5000",
+        "Skeleton champion scroll": "1/5000"
+    },
+    "obor": {
+        "Hill giant club": "1/118",
+        "Giant champion scroll": "1/5000"
+    },
+    "commander zilyana": {
+        "Saradomin sword": "1/127",
+        "Armadyl crossbow": "1/508",
+        "Saradomin's light": "1/254",
+        "Saradomin hilt": "1/508",
+        "Godsword shard 1": "1/768",
+        "Godsword shard 2": "1/768",
+        "Godsword shard 3": "1/768",
+        "Pet zilyana": "1/5000"
+    },
+    "k'ril tsutsaroth": {
+        "Zamorakian spear": "1/127",
+        "Staff of the dead": "1/508",
+        "Zamorak hilt": "1/508",
+        "Godsword shard 1": "1/768",
+        "Godsword shard 2": "1/768",
+        "Godsword shard 3": "1/768",
+        "Pet k'ril tsutsaroth": "1/5000"
+    },
+    "alchemical hydra": {
+        "Hydra's eye": "1/181",
+        "Hydra's fang": "1/181",
+        "Hydra's heart": "1/181",
+        "Hydra tail": "1/513",
+        "Hydra leather": "1/514",
+        "Hydra's claw": "1/1001",
+        "Dragon thrownaxe": "1/2000",
+        "Dragon knife": "1/2001",
+        "Jar of chemicals": "1/2000",
+        "Ikkle hydra": "1/3000"
+    }
+}

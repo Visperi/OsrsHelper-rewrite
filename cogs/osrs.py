@@ -31,6 +31,7 @@ import json
 import numpy as np
 from bs4 import BeautifulSoup
 import discord
+import fractions
 
 
 async def parse_cluedata(results: tuple):
@@ -60,7 +61,7 @@ async def parse_cluedata(results: tuple):
 async def calculate_gains(new_highscores: list, old_highscores: list):
     """
     Calculate difference between new and old highscores. The highscores need to have all the data that osrs api gives.
-    The data inside can be either in string of int format.
+    The data inside can be either in string or int format.
 
     :param new_highscores: New or current user highscores as list of lists
     :param old_highscores: Old user highscores as list of lists
@@ -83,7 +84,7 @@ async def calculate_gains(new_highscores: list, old_highscores: list):
     return gains
 
 
-async def separate_thousands(scorelist: list, gains: bool):
+async def format_scoretable(scorelist: list, gains: bool):
     """
     Format the scorelist so the scorelist values have thousands separated with comma.
 
@@ -128,8 +129,8 @@ async def make_scoretable(highscores_data: list, username: str, gains: bool = Fa
     clues = highscores_data[26:32]
 
     # Separate thousands with comma
-    formatted_skills = await separate_thousands(skills, gains=gains)
-    formatted_clues = await separate_thousands(clues, gains=gains)
+    formatted_skills = await format_scoretable(skills, gains=gains)
+    formatted_clues = await format_scoretable(clues, gains=gains)
 
     # Insert row headers from above lists to highscores lists with corresponding indexes
     for skill in skills:
@@ -155,7 +156,7 @@ async def make_ehp_list(ehp_rates: dict):
     Convert a dictionary of ehp xp's and xp rates into a string with level and xp rates. String is returned so the
     levels and rates are one below another
 
-    :param ehp_rates: Dictionary of ehp xp and rates in format {xp: xph, ...}. Values can be either str or int
+    :param ehp_rates: Dictionary of ehp xp and rates in format {xp required: xph, ...}. Values can be either str or int
     :return: String of 'minimum level: xph' pairs one below another
     """
 
@@ -167,7 +168,7 @@ async def make_ehp_list(ehp_rates: dict):
     experiences = experiences_dict.items()
 
     # Loop through whole dictionary for skill and append level/xph pairs to list
-    for rate in list(ehp_rates.items()):
+    for rate in ehp_rates.items():
         ehp_xp_required = int(rate[0].replace(",", ""))
         ehp_xph = rate[1]
 
@@ -685,6 +686,89 @@ class OsrsCog:
 
         ehp_list = await make_ehp_list(skill_ehp_rates)
         await ctx.send(f"EHP rates for {skillname.capitalize()}:\n\n{ehp_list}")
+
+    @commands.command(name="loot", aliases=["kill"])
+    async def get_drop_chances(self, ctx, *, target_input):
+        """
+        Calculate chances in percents to get unique drops from a given boss with given amount of kills. Chances are
+        rounded with two decimal places.
+
+        :param ctx:
+        :param target_input: Kill amount and boss name given by user
+        """
+
+        def calculate_chance(attempts: int, rate: float):
+            """
+            Calculate the chance for a drop with given attempts and drop rate.
+
+            :param attempts: Amount of kills/tries as an int
+            :param rate: Drop rate for the drop as a float
+            :return: String that has the chance to get the drop in percents
+            """
+            chance = (1 - (1 - rate) ** attempts) * 100
+            if chance < 0.01:
+                chance = "< 0.01%"
+            elif chance > 99.99:
+                chance = "> 99.99%"
+            else:
+                chance = f"{chance:.2f}%"
+            return chance
+
+        with open("resources\\drop_rates.json") as rates_file:
+            drop_rates_dict = json.load(rates_file)
+
+        target_input_list = target_input.split()
+        try:
+            amount = int(target_input_list[0])
+            boss_name = " ".join(target_input_list[1:])
+        except ValueError:
+            await ctx.send("The amount of kills must be an integer. Give kills first and then the boss name.")
+            return
+
+        # Convert some most common nicknames to the full names
+        if boss_name in ["corp", "corpo"]:
+            boss_name = "corporeal beast"
+        elif boss_name == "cerb":
+            boss_name = "cerberus"
+        elif boss_name == "sire":
+            boss_name = "abyssal sire"
+        elif boss_name == "kq":
+            boss_name = "kalphite queen"
+        elif boss_name in ["bando", "bandos"]:
+            boss_name = "general graardor"
+        elif boss_name == "mole":
+            boss_name = "giant mole"
+        elif boss_name == "kbd":
+            boss_name = "king black dragon"
+        elif boss_name in ["kreearra", "arma"]:
+            boss_name = "kree'arra"
+        elif boss_name == "thermo":
+            boss_name = "thermonuclear smoke devil"
+        elif boss_name == "vetion":
+            boss_name = "vet'ion"
+        elif boss_name in ["zilyana", "sara", "zily"]:
+            boss_name = "commander zilyana"
+        elif boss_name == "zammy":
+            boss_name = "k'ril tsutsaroth"
+        elif boss_name == "hydra":
+            boss_name = "alchemical hydra"
+
+        try:
+            boss_rates = drop_rates_dict[boss_name]
+        except KeyError:
+            await ctx.send("Could not find a boss with that name.")
+            return
+
+        # Loop through all item drop rates for boss and add them to list
+        drop_chances = []
+        for item_drop_rate in boss_rates.items():
+            itemname = item_drop_rate[0]
+            drop_rate = fractions.Fraction(item_drop_rate[1])
+            drop_chance = calculate_chance(amount, float(drop_rate))
+            drop_chances.append(f"**{itemname}:** {drop_chance}")
+
+        drop_chances_joined = "\n".join(drop_chances)
+        await ctx.send(f"Chances to get loot in {amount} kills from {boss_name.capitalize()}:\n\n{drop_chances_joined}")
 
 
 def setup(bot):
