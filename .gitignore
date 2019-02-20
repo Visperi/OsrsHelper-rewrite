@@ -2,4 +2,4 @@
 *__pycache__/
 *credentials.json
 venv/
-test*
+OsrsHelper/test*

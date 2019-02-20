@@ -22,6 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+# TODO Something to change already tracked player's name and something to change account type
+#  from hc/uim -> im -> normal
+
 import aiohttp
 import math
 from discord.ext import commands
