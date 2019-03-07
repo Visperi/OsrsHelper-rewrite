@@ -180,5 +180,20 @@
         "Dragon knife": "1/2001",
         "Jar of chemicals": "1/2000",
         "Ikkle hydra": "1/3000"
+    },
+    "chambers of xeric": {
+        "Dexterous prayer scroll": "1/2992875",
+        "Arcane prayer scroll": "1/2992875",
+        "Twisted buckler": "1/14964375",
+        "Dragon hunter crossbow": "1/14964375",
+        "Dinh's bulwark": "1/19952500",
+        "Ancestral hat": "1/19952500",
+        "Ancestral robe top": "1/19952500",
+        "Ancestral robe bottom": "1/19952500",
+        "Dragon claws": "1/19952500",
+        "Elder maul": "1/29928750",
+        "Kodai insignia": "1/29928750",
+        "Twisted bow": "1/29928750",
+        "Olmlet": "1/45977500"
     }
 }

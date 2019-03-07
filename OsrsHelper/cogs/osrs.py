@@ -587,31 +587,40 @@ class OsrsCog:
     @commands.command(name="update")
     async def osrs_latest_news(self, ctx):
         """
-        Parse Old School Runescape homepage for latest news and send a link to it.
+        Parse Old School Runescape homepage for latest game and community news and send a links to them.
 
         :param ctx:
         :return:
         """
-        update_dates = []
-        articles = {}
+        game_articles = {}
+        community_articles = {}
+
         link = "http://oldschool.runescape.com/"
         osrs_response = await self.visit_website(link)
 
         osrs_response_html = BeautifulSoup(osrs_response, "html.parser")
-        for time_tag in osrs_response_html.findAll("time"):
-            update_dates.append(time_tag["datetime"])
-        latest_update_date = max(update_dates)
 
         for div_tag in osrs_response_html.findAll("div", attrs={"class": "news-article__details"}):
-            if div_tag.time["datetime"] == latest_update_date:
-                p_tag = div_tag.p
-                article_link = p_tag.a["href"]
-                article_number = p_tag.a["id"][-1]
-                articles[article_number] = article_link
+            p_tag = div_tag.p
+            # Somehow the article types always end in space so leave it out
+            article_type = div_tag.span.contents[0][:-1]
+            article_link = p_tag.a["href"]
+            article_number = p_tag.a["id"][-1]
+            if article_type == "Game Updates":
+                game_articles[article_number] = article_link
+            elif article_type == "Community":
+                community_articles[article_number] = article_link
 
-        latest_article_number = min(articles.keys())
-        latest_update_link = articles[latest_article_number]
-        await ctx.send(f"Latest updates related to Old School Runescape: <{latest_update_link}>")
+        # Find the smallest article numbers for both article types
+        min_article_game = min(game_articles.keys())
+        min_article_community = min(community_articles.keys())
+
+        game_link = game_articles[min_article_game]
+        community_link = community_articles[min_article_community]
+
+        await ctx.send(f"Latest news about Osrs:\n\n"
+                       f"Game: {game_link}\n"
+                       f"Community: {community_link}")
 
     @commands.command
     async def maps(self, ctx):
@@ -755,19 +764,23 @@ class OsrsCog:
             boss_name = "k'ril tsutsaroth"
         elif boss_name == "hydra":
             boss_name = "alchemical hydra"
+        elif boss_name in ["xoc", "raid", "raids", "raids 1"]:
+            boss_name = "chambers of xeric"
 
         try:
             boss_rates = drop_rates_dict[boss_name]
         except KeyError:
             await ctx.send("Could not find a boss with that name.")
             return
-
         # Loop through all item drop rates for boss and add them to list
         drop_chances = []
         for item_drop_rate in boss_rates.items():
             itemname = item_drop_rate[0]
-            drop_rate = fractions.Fraction(item_drop_rate[1])
-            drop_chance = calculate_chance(amount, float(drop_rate))
+            drop_rate_frac = fractions.Fraction(item_drop_rate[1])
+            drop_rate = float(drop_rate_frac)
+            if boss_name == "chambers of xeric":
+                drop_rate = float(drop_rate_frac) * 30000
+            drop_chance = calculate_chance(amount, drop_rate)
             drop_chances.append(f"**{itemname}:** {drop_chance}")
 
         drop_chances_joined = "\n".join(drop_chances)

@@ -27,7 +27,7 @@ import discord
 from discord.ext import commands
 import traceback
 import aiohttp
-import database
+import OsrsHelper.database as database
 
 bot = commands.Bot(command_prefix="!", case_insensitive=True)
 # bot.remove_command("help")
