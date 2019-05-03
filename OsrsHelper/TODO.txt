@@ -1,0 +1,9 @@
+- Move visit_website() to a place where all cogs can access it
+
+OSRS COG
+- Update gains commands and possibly the data structure of tracked players' stored stats
+- Something to change already tracked player's name and something to change account type from hc/uim -> im -> normal
+- Nicks command
+
+ITEMS COG
+- Add support for user created item keys to price command
