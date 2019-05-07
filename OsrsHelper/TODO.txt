@@ -1,9 +1,14 @@
 - Move visit_website() to a place where all cogs can access it
+- Move database related things to database.py where all cogs can access them
+- Make it possible to change the prefix as a server specific command
+- Update clue databases
+- Further update README
 
 OSRS COG
 - Update gains commands and possibly the data structure of tracked players' stored stats
 - Something to change already tracked player's name and something to change account type from hc/uim -> im -> normal
-- Nicks command
+- Old nicks command?
 
 ITEMS COG
 - Add support for user created item keys to price command
+- Add support for adding and removing item keys

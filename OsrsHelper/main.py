@@ -31,7 +31,7 @@ import OsrsHelper.database as database
 
 bot = commands.Bot(command_prefix="!", case_insensitive=True)
 # bot.remove_command("help")
-initial_extensions = ["cogs.members", "cogs.osrs", "cogs.error_handler"]
+initial_extensions = ["cogs.members", "cogs.osrs", "cogs.error_handler", "cogs.items"]
 
 
 @bot.event
@@ -44,7 +44,7 @@ async def on_ready():
 
 
 # noinspection PyBroadException
-def run(name):
+def run(name: str):
     with open("resources\\credentials.json") as credential_file:
         credentials = json.load(credential_file)
 

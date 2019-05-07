@@ -26,7 +26,7 @@ from discord.ext import commands
 import discord
 import datetime
 import json
-import aiohttp
+import asyncio
 
 
 class ItemsCog:
@@ -39,14 +39,12 @@ class ItemsCog:
             async with self.bot.aiohttp_session.get(link, timeout=timeout) as r:
                 resp = await r.text(encoding=encoding)
             return resp
-        except aiohttp.ServerTimeoutError:
-            # TODO: Return something instead of just silently printing an error
-            print("TimeoutError")
-            return
+        except asyncio.TimeoutError:
+            # Return None if TimeoutError occurs
+            return None
 
     @commands.command(name="price", aliases=["pricechange"])
     async def get_tradeable_price(self, ctx, *, price_search):
-        # TODO: Add support for user created item keys
         api_link = "http://services.runescape.com/m=itemdb_oldschool/api/graph/{id}.json"
 
         # Check if user gave a multiplier
@@ -66,8 +64,8 @@ class ItemsCog:
                 if multiplier < 1:
                     raise ValueError
             except ValueError:
-                await ctx.send("Multiplier was in unsupported format. Only supported abbreviations are `k` and `m`."
-                               "they must come after a positive integer.")
+                await ctx.send("Multiplier was in unsupported format. It must be a positive integer, and only "
+                               "abbreviations `k` and `m` are supported.")
                 return
         else:
             item_name = price_search
@@ -81,6 +79,9 @@ class ItemsCog:
         item_name = result[0]
         item_id = result[1]
         price_data = json.loads(await self.visit_website(api_link.format(id=item_id)))
+        if not price_data:
+            await ctx.send("Osrs APi answers too slowly. Try again later.")
+            return
         daily_data = price_data["daily"]
 
         # Timestamps to get the item prices from Osrs APIs data
@@ -112,8 +113,8 @@ class ItemsCog:
         latest_ts_date = datetime.datetime.utcfromtimestamp(int(latest_ts) / 1e3)
 
         embed = discord.Embed(title=title).add_field(name="Latest price", value=item_price) \
-            .add_field(name="Pricechanges", value=f"In a day: {diff_day} gp\nIn a week: {diff_week} gp\n"
-                                                  f"In a month: {diff_month} gp", inline=False) \
+            .add_field(name="Price changes", value=f"In a day: {diff_day} gp\nIn a week: {diff_week} gp\n"
+                                                   f"In a month: {diff_month} gp", inline=False) \
             .set_footer(text=f"Latest price from {latest_ts_date} UTC")
 
         await ctx.send(embed=embed)

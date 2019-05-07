@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import aiohttp
 import math
 from discord.ext import commands
 from tabulate import tabulate
@@ -32,6 +31,7 @@ import numpy as np
 from bs4 import BeautifulSoup
 import discord
 import fractions
+import asyncio
 
 
 class OsrsCog:
@@ -40,7 +40,7 @@ class OsrsCog:
         self.bot = bot
 
     @staticmethod
-    async def parse_cluedata(results: tuple):
+    async def parse_cluedata(results: tuple) -> list:
         """
         Parses given matchlist for clue searches. A list with a solution or list with matches is returned based on if
         there are multiple matches or not.
@@ -64,7 +64,7 @@ class OsrsCog:
         return result
 
     @staticmethod
-    async def format_scoretable(scorelist: list, gains: bool):
+    async def format_scoretable(scorelist: list, gains: bool) -> list:
         """
         Format the scorelist so the scorelist values have thousands separated with comma.
 
@@ -85,8 +85,8 @@ class OsrsCog:
         return scorelist
 
     @staticmethod
-    async def make_scoretable(highscores_data: list, username: str, gains: bool = False, old_savedate: str = None,
-                              new_savedate: str = None, account_type: str = "normal"):
+    async def make_scoretable(highscores_data: list, username: str, combat_level: int, gains: bool = False,
+                              old_savedate: str = None, new_savedate: str = None, account_type: str = "normal") -> str:
         """
         Takes a list of lists that has users' highscore data and uses tabulate to make it into table format.
         Lists and sublists need to be in the same order as in Osrs official highscores and api ([Rank, Level, Xp]).
@@ -94,11 +94,12 @@ class OsrsCog:
 
         :param highscores_data: Data returned by Osrs highscores api splitted into list of lists
         :param username: Username of the account whose highscores are being handled
+        :param combat_level: Combat level of the user whose score table will be made
         :param gains: Boolean parameter to determine the table header and behaviour of separate_thousands
-        :param old_savedate: A date when user stats were last saved into database. Only needed for gains table
-        :param new_savedate: A date when user new stats are compared to old ones. Only needed for gains table
-        :param account_type: Account type which is shown when the bot sends a gain/stats table to Discord
-        :return: Skill and clue highscores combined inside of discord codeblock quotes
+        :param old_savedate: A date when user stats were last saved into database. Only needed when gains = True
+        :param new_savedate: A date when user new stats are compared to old ones. Only needed when gains = True
+        :param account_type: Account type which is shown in a table that the bot sends to Discord
+        :return: Skill and clue highscores combined inside of discord code block quotes
         """
 
         skill_headers = ["Total", "Attack", "Defence", "Strength", "Hitpoints", "Ranged", "Prayer", "Magic", "Cooking",
@@ -126,43 +127,37 @@ class OsrsCog:
         if gains:
             table_header = "{:^46}\n{:^46}\n{}".format(f"Gains for {username}",
                                                        f"Account type: {account_type.capitalize()}",
-                                                       f"Between {old_savedate} - {new_savedate} UTC")
+                                                       f"Between {old_savedate} - {new_savedate} UTC",)
         else:
             # Show stats prefix only if account type is something else than normal
             if account_type == "normal":
                 account_type = ""
             table_header = "{:^50}".format(f"{account_type.capitalize()} stats of {username}")
 
-        scoretable = f"```{table_header}\n\n{skilltable}\n\n{cluetable}```"
+        scoretable = f"```{table_header}\n\nCombat level: {combat_level}\n\n{skilltable}\n\n{cluetable}```"
         return scoretable
 
     @staticmethod
-    async def make_ehp_list(ehp_rates: dict):
+    async def make_ehp_list(ehp_rates: dict, experiences: tuple):
         """
         Convert a dictionary of ehp xp's and xp rates into a string with level and xp rates. String is returned so the
         levels and rates are one below another
 
         :param ehp_rates: Dictionary of ehp xp and rates in format {xp required: xph, ...}. Values can be either str or
         int
+        :param experiences: Tuple that has all (level, xp) pairs for levels that are in ehp_dict
         :return: String of 'minimum level: xph' pairs one below another
         """
 
         ehp_list = []
 
-        with open("resources\\experiences.json") as experience_file:
-            experiences_dict = json.load(experience_file)
-
-        experiences = experiences_dict.items()
-
         # Loop through whole dictionary for skill, convert required xp's to levels and append 'level: xph' pairs to list
         for rate in ehp_rates.items():
             # Skip bonus xp fields
-            if rate[0] == "bonus_start" or rate[0] == "bonus_end":
-                continue
             ehp_xp_required = int(rate[0])
             ehp_xph = rate[1]
 
-            # Convert ehp xp's required to levels by comparing them to levels in experiences.json
+            # Convert ehp xp's required to levels by comparing them to levels in experiences tuple
             # Closest level downwards is given
             for experience_tuple in experiences:
                 level = experience_tuple[0]
@@ -175,14 +170,23 @@ class OsrsCog:
         return "\n".join(ehp_list)
 
     async def visit_website(self, link: str, encoding: str = "utf-8", timeout: int = 5):
+        """
+        Visit given link to get its data for parsing purposes. asyncio.TimeoutError is raised if the host takes more
+        than 5 seconds to respond. This is to prevent too delayed bot messages.
+
+        :param link: A link that should be visited
+        :param encoding: Encoding in which the API or website will respond. In some cases it can be something else than
+        UTF-8
+        :param timeout: Amount of seconds that are waited before asyncio.TimeoutError is raised if no response is given
+        :return:
+        """
         try:
             async with self.bot.aiohttp_session.get(link, timeout=timeout) as r:
                 resp = await r.text(encoding=encoding)
             return resp
-        except aiohttp.ServerTimeoutError:
-            # TODO: Return something instead of just silently printing an error
-            print("TimeoutError")
-            return
+        except asyncio.TimeoutError:
+            # Return None if TimeoutError occurs
+            return None
 
     async def get_highscores(self, username: str, account_type: str = "normal"):
         """
@@ -191,8 +195,27 @@ class OsrsCog:
 
         :param username: Username of the account whose highscores are wanted
         :param account_type: Account type to determine the highscores and url type
-        :return: User highscore data as a list of lists which values are in str
+        :return: User highscore data as a list of lists which values are in str, user combat level as an int
         """
+
+        def calculate_combat_level():
+            combat_skills = highscore_data[1:8]
+
+            # Calculate combat level
+            att_lvl = int(combat_skills[0][1])
+            def_lvl = int(combat_skills[1][1])
+            str_lvl = int(combat_skills[2][1])
+            hp_lvl = int(combat_skills[3][1])
+            ranged_lvl = int(combat_skills[4][1])
+            prayer_lvl = int(combat_skills[5][1])
+            magic_lvl = int(combat_skills[6][1])
+
+            base_combat = 0.25 * (def_lvl + hp_lvl + math.floor(prayer_lvl / 2))
+            melee_combat = 0.325 * (att_lvl + str_lvl)
+            ranged_combat = 0.325 * math.floor((3 / 2) * ranged_lvl)
+            magic_combat = 0.325 * math.floor((3 / 2) * magic_lvl)
+            final_combat = math.floor(base_combat + max([melee_combat, ranged_combat, magic_combat]))
+            return final_combat
 
         if account_type == "normal":
             header = "hiscore_oldschool"
@@ -214,7 +237,10 @@ class OsrsCog:
         highscore_data = []
         highscores_link = f"http://services.runescape.com/m={header}/index_lite.ws?player={username}"
         raw_highscore_data = await self.visit_website(highscores_link)
-        if "<title>404 - Page not found</title>" in raw_highscore_data:
+        if not raw_highscore_data:
+            # TODO: Return/raise something
+            return
+        elif "<title>404 - Page not found</title>" in raw_highscore_data:
             return None
 
         # Appends into highscore_data in format [Rank, Level, xp] for skills and [Rank, Amount] for everything else.
@@ -229,7 +255,9 @@ class OsrsCog:
                     datarow[index] = "0"
             highscore_data.append(datarow)
 
-        return highscore_data
+        combat_level = calculate_combat_level()
+
+        return highscore_data, combat_level
 
     @commands.command(name="ttm")
     async def check_ttm(self, ctx, *, username):
@@ -242,8 +270,11 @@ class OsrsCog:
         """
 
         ttm_link = f"http://crystalmathlabs.com/tracker/api.php?type=ttm&player={username}"
-        response = await self.visit_website(ttm_link, encoding="utf-8-sig")
-        ehp = math.ceil(float(response))
+        ttm_response = await self.visit_website(ttm_link, encoding="utf-8-sig")
+        if not ttm_response:
+            await ctx.send("CML API answers too slowly. Try again later.")
+            return
+        ehp = ttm_response
         msg = f"Ttm for {username}: {ehp} EHP"
         if ehp == -1:
             msg = "This username is not in use or it has not been updated in CML yet."
@@ -271,12 +302,18 @@ class OsrsCog:
         href = f"/w/{page_name}"
         page_link = base_link + href
         wiki_response = await self.visit_website(page_link)
+        if not wiki_response:
+            await ctx.send("Osrs wiki answers too slowly. Try again later.")
+            return
 
         # If previous link doesn't have any wiki page, try manual search in wiki
         if f"This page doesn&#039;t exist on the wiki. Maybe it should?" in wiki_response:
             hyperlinks = []
             wiki_search_link = f"https://oldschool.runescape.wiki/w/Special:Search?search={page_name}"
             wiki_search_resp = await self.visit_website(wiki_search_link)
+            if not wiki_search_resp:
+                await ctx.send("Osrs wiki answers too slowly. Try again later.")
+                return
 
             # parse wiki search response and search for possible "did you mean" matches
             search_resp_html = BeautifulSoup(wiki_search_resp, "html.parser")
@@ -387,13 +424,13 @@ class OsrsCog:
 
     @commands.command(name="stats", aliases=["ironstats", "uimstats", "hcstats", "dmmstats", "seasonstats",
                                              "tournamentstats"])
-    async def send_user_highscores(self, ctx, *, username):
+    async def get_user_highscores(self, ctx, *, username):
         """
         Search for user highscores from official Old School Runescape api. Search supports using different highscores
         for different type of characters. If highscore data is successfully found, send the current stats into chat.
 
         :param ctx:
-        :param username: User whose stats are wanted to be searched
+        :param username: Account whose stats are wanted to be searched
         """
 
         prefix_end = ctx.message.content.find("stats")
@@ -413,11 +450,11 @@ class OsrsCog:
         else:
             account_type = "normal"
 
-        user_highscores = await self.get_highscores(username, account_type=account_type)
+        user_highscores, combat_level = await self.get_highscores(username, account_type=account_type)
         if not user_highscores:
             msg = "Could not find any highscores with that username."
         else:
-            msg = await self.make_scoretable(user_highscores, username, account_type=account_type)
+            msg = await self.make_scoretable(user_highscores, username, combat_level, account_type=account_type)
         await ctx.send(msg)
 
     # noinspection PyBroadException
@@ -484,7 +521,7 @@ class OsrsCog:
         old_highscores = json.loads(old_user_data[1])
         account_type = old_user_data[2]
         new_savedate = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
-        new_highscores = await self.get_highscores(username, account_type)
+        new_highscores, new_combat_level = await self.get_highscores(username, account_type)
 
         # Calculate the gains and then make a score table
         new_skills_array = np.array(new_highscores[:24], dtype=int)
@@ -506,8 +543,9 @@ class OsrsCog:
         minigames_difference[:, 0] *= -1
         gains = skills_difference.tolist() + minigames_difference.tolist()
 
-        scoretable = await self.make_scoretable(gains, username, gains=True, old_savedate=old_savedate,
-                                                new_savedate=new_savedate, account_type=account_type)
+        scoretable = await self.make_scoretable(gains, username, new_combat_level, gains=True,
+                                                old_savedate=old_savedate, new_savedate=new_savedate,
+                                                account_type=account_type)
 
         self.bot.cursor.execute("""UPDATE tracked_players SET SAVEDATE = %s, STATS = %s WHERE USERNAME = %s;""",
                                 [new_savedate, json.dumps(new_highscores), username])
@@ -515,57 +553,55 @@ class OsrsCog:
         await ctx.send(scoretable)
 
     @commands.command(name="xp", aliases=["exp", "level", "lvl"])
-    async def required_xp(self, ctx, *, levels):
+    async def get_experience_required(self, ctx, *, level_query):
         """
         Get experience needed for given level or calculate experience needed for given level gap.
 
         :param ctx:
-        :param levels: One Level or two levels separated by '-' given by user
+        :param level_query: One Level or two levels separated by '-' in range 1-127. Also giving 'max' instead of 127
+        is supported
         :return:
         """
 
-        with open("resources\\experiences.json") as xp_file:
-            xp_req_data = json.load(xp_file)
-
-        lvl_search = levels.replace(" - ", "-")
-        search_splitted = lvl_search.split("-")
-        if len(search_splitted) > 2:
-            await ctx.send("Invalid input. This Command supports only one or two levels.")
+        level_query = level_query.replace("max", "127").replace(" - ", "-").split("-")
+        if len(level_query) > 2:
+            await ctx.send("This Command supports maximum of 2 levels only.")
             return
 
-        # Check viability for every element in list and convert to number if needed
-        for index, lvl in enumerate(search_splitted):
-            if lvl == "max":
-                lvl = "127"
-                search_splitted[index] = lvl
+        # Check that user gave only level(s) that are between 1 and 127
+        for level in level_query:
             try:
-                lvl = int(lvl)
-                if lvl > 127:
-                    await ctx.send("Too big level was given. The biggest level in game can be given as 127 or max.")
-                    return
-                elif lvl < 1:
-                    await ctx.send("Too small level was given. The smallest level in game is 1.")
+                level = int(level)
+                if level < 1 or level > 127:
+                    await ctx.send("All possible levels are in range 1-127. Level 127 can also be given as `max`.")
                     return
             except ValueError:
                 await ctx.send("Invalid input. Excessive characters or level(s) not convertible to number was given.")
                 return
 
-        if len(search_splitted) == 1:
-            target_level = search_splitted[0]
-            xp_required = xp_req_data[target_level]
-            base_message = f"Experience needed for level {target_level}: "
+        if len(level_query) == 1:
+            target_level = level_query[0]
+            self.bot.cursor.execute("""SELECT xp FROM experiences WHERE level = %s;""", [target_level])
+            xp_required = self.bot.cursor.fetchone()[0]
+            base_message = f"Xp required to level {target_level}: "
         else:
-            start_level = search_splitted[0]
-            target_level = search_splitted[1]
-            xp_required = xp_req_data[target_level] - xp_req_data[start_level]
-            if xp_required < 0:
-                await ctx.send("Target level can't be smaller than starting level.")
+            starting_level = int(level_query[0])
+            target_level = int(level_query[1])
+            if target_level < starting_level:
+                await ctx.send("Target level can't be smaller than the starting level.")
                 return
-            base_message = f"Experience needed in level gap {start_level} - {target_level}: "
+            self.bot.cursor.execute("""SELECT xp FROM experiences WHERE level IN (%s, %s);""", [starting_level,
+                                                                                                target_level])
+            level_reqs = self.bot.cursor.fetchall()
+            # Xp required by levels are given as int tuples e.g. ((8771558,), (13034431,))
+            starting_xp_req = level_reqs[0][0]
+            target_xp_req = level_reqs[1][0]
+            xp_required = target_xp_req - starting_xp_req
+            base_message = f"Xp required between level gap {starting_level} - {target_level}: "
 
-        fmt_xp_required = f"{xp_required:,}".replace(",", " ")
-        complete_message = base_message + fmt_xp_required
-        await ctx.send(complete_message)
+        # Separate thousands with spaces in the xp required
+        format_xp_required = "{:,}".format(xp_required).replace(",", " ")
+        await ctx.send(base_message + format_xp_required)
 
     @commands.command(name="puzzle")
     async def get_solved_puzzle(self, ctx, *, puzzle_name):
@@ -607,6 +643,9 @@ class OsrsCog:
 
         link = "http://oldschool.runescape.com/"
         osrs_response = await self.visit_website(link)
+        if not osrs_response:
+            await ctx.send("Osrs website answers too slowly. Try again later.")
+            return
 
         osrs_response_html = BeautifulSoup(osrs_response, "html.parser")
 
@@ -644,7 +683,7 @@ class OsrsCog:
         await ctx.send(f"<{maps_link}>")
 
     @commands.command(name="ehp", aliases=["ironehp", "skillerehp", "f2pehp"])
-    async def calculate_ehp_rates(self, ctx, skillname):
+    async def get_skill_ehp(self, ctx, skillname):
         """
         Check and send Efficient Hours Played xp rates for given skill. Supports different ehp rate tables for
         different account types.
@@ -707,7 +746,10 @@ class OsrsCog:
             await ctx.send(f"There are no EHP rates for {skillname.capitalize()} for given account type.")
             return
 
-        ehp_list = await self.make_ehp_list(skill_ehp_rates)
+        max_ehp_xp_requirement = list(skill_ehp_rates.keys())[-1]
+        self.bot.cursor.execute("SELECT * FROM experiences WHERE xp <= %s;", [max_ehp_xp_requirement])
+        experiences = self.bot.cursor.fetchall()
+        ehp_list = await self.make_ehp_list(skill_ehp_rates, experiences)
         await ctx.send(f"{prefix.capitalize()} EHP rates for {skillname.capitalize()}:\n\n{ehp_list}")
 
     @commands.command(name="loot", aliases=["kill"])
@@ -810,80 +852,6 @@ class OsrsCog:
                                 [datetime.datetime.now().strftime("%d/%m/%Y %H:%M"), json.dumps(user_highscores),
                                  username])
         await ctx.send(f"Stats for `{username}` successfully reset.")
-
-    @commands.command(name="price", aliases=["pricechange"])
-    async def get_tradeable_price(self, ctx, *, price_search):
-        # TODO: Add support for user created item keys
-        api_link = "http://services.runescape.com/m=itemdb_oldschool/api/graph/{id}.json"
-
-        # Check if user gave a multiplier
-        if "*" in price_search:
-            price_search = price_search.replace(" * ", "*").split("*")
-            item_name = price_search[0]
-            multiplier = price_search[1]
-
-            # Check the multiplier for abbreviations 'k' and 'm'
-            try:
-                if multiplier[-1] == "k":
-                    multiplier = int(multiplier[:-1]) * 1000
-                elif multiplier[-1] == "m":
-                    multiplier = int(multiplier[:-1]) * 1000000
-                else:
-                    multiplier = int(multiplier)
-                if multiplier < 1:
-                    raise ValueError
-            except ValueError:
-                await ctx.send("Multiplier was in unsupported format. Only supported abbreviations are `k` and `m`."
-                               "they must come after a positive integer.")
-                return
-        else:
-            item_name = price_search
-            multiplier = 1
-
-        self.bot.cursor.execute("""SELECT * FROM tradeables WHERE NAME = %s;""", [item_name])
-        result = self.bot.cursor.fetchone()
-        if not result:
-            await ctx.send("Could not find any items with your search.")
-            return
-        item_name = result[0]
-        item_id = result[1]
-        price_data = json.loads(await self.visit_website(api_link.format(id=item_id)))
-        daily_data = price_data["daily"]
-
-        # Timestamps to get the item prices from Osrs APIs data
-        timestamps = list(daily_data.keys())
-        latest_ts = timestamps[-1]
-        day_ts = timestamps[-2]
-        week_ts = timestamps[-8]
-        month_ts = timestamps[-31]
-
-        latest_price = daily_data[latest_ts]
-        price_total = "{:,}".format(latest_price * multiplier).replace(",", " ")
-        latest_price_formatted = "{:,}".format(latest_price).replace(",", " ")
-
-        # Price differences between the latest price and prices day, week and month ago. Format them so that the sign
-        # is always shown and thousands are separated by spaces.
-        diff_day = "{:+,}".format(latest_price - daily_data[day_ts]).replace(",", " ")
-        diff_week = "{:+,}".format(latest_price - daily_data[week_ts]).replace(",", " ")
-        diff_month = "{:+,}".format(latest_price - daily_data[month_ts]).replace(",", " ")
-
-        if multiplier != 1:
-            title = f"{item_name} ({multiplier} pcs)"
-            item_price = f"{price_total} gp ({latest_price_formatted} ea)"
-        else:
-            title = item_name
-            item_price = f"{latest_price_formatted} gp"
-
-        # Convert latest timestamp to date. The timestamp is in milliseconds so divide it by 1000 to convert it to
-        # seconds
-        latest_ts_date = datetime.datetime.utcfromtimestamp(int(latest_ts) / 1e3)
-
-        embed = discord.Embed(title=title).add_field(name="Latest price", value=item_price)\
-            .add_field(name="Pricechanges", value=f"In a day: {diff_day} gp\nIn a week: {diff_week} gp\n"
-                                                  f"In a month: {diff_month} gp", inline=False)\
-            .set_footer(text=f"Latest price from {latest_ts_date} UTC")
-
-        await ctx.send(embed=embed)
 
 
 def setup(bot):
