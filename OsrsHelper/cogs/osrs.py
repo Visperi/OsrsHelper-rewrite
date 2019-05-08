@@ -40,30 +40,6 @@ class OsrsCog:
         self.bot = bot
 
     @staticmethod
-    async def parse_cluedata(results: tuple) -> list:
-        """
-        Parses given matchlist for clue searches. A list with a solution or list with matches is returned based on if
-        there are multiple matches or not.
-
-        :param results: A tuple of results with lengths of 5
-        :return: A solution to given clue in list or a list of clues found with search terms
-        """
-
-        if len(results) == 1:
-            match = results[0]
-            solution = match[1]
-            location = match[2]
-            challenge_ans = match[3]
-            puzzle = match[4]
-            result = [solution, location, challenge_ans, puzzle]
-        else:
-            matches = []
-            for match in results:
-                matches.append(match[0])
-            result = matches
-        return result
-
-    @staticmethod
     async def format_scoretable(scorelist: list, gains: bool) -> list:
         """
         Format the scorelist so the scorelist values have thousands separated with comma.
@@ -104,22 +80,21 @@ class OsrsCog:
 
         skill_headers = ["Total", "Attack", "Defence", "Strength", "Hitpoints", "Ranged", "Prayer", "Magic", "Cooking",
                          "Woodcutting", "Fletching", "Fishing", "Firemaking", "Crafting", "Smithing", "Mining",
-                         "Herblore",
-                         "Agility", "Thieving", "Slayer", "Farming", "Runecrafting", "Hunter", "Construction"]
+                         "Herblore", "Agility", "Thieving", "Slayer", "Farming", "Runecrafting", "Hunter",
+                         "Construction"]
         clue_headers = ["All", "Beginner", "Easy", "Medium", "Hard", "Elite", "Master"]
         skills = highscores_data[:24]
         clues = highscores_data[27:]
 
-        # Separate thousands with comma
+        # Separate thousands with comma. This and format_scoretable() are both static methods so calling of the class is
+        # needed
         formatted_skills = await OsrsCog.format_scoretable(skills, gains=gains)
         formatted_clues = await OsrsCog.format_scoretable(clues, gains=gains)
 
         # Insert row headers from above lists to highscores lists with corresponding indexes
-        for skill in skills:
-            index = skills.index(skill)
+        for index, skill in enumerate(skills):
             skill.insert(0, skill_headers[index])
-        for clue in clues:
-            index = clues.index(clue)
+        for index, clue in enumerate(clues):
             clue.insert(0, clue_headers[index])
 
         skilltable = tabulate(formatted_skills, tablefmt="orgtbl", headers=["Skill", "Rank", "Level", "Xp"])
@@ -127,7 +102,7 @@ class OsrsCog:
         if gains:
             table_header = "{:^46}\n{:^46}\n{}".format(f"Gains for {username}",
                                                        f"Account type: {account_type.capitalize()}",
-                                                       f"Between {old_savedate} - {new_savedate} UTC",)
+                                                       f"Between {old_savedate} - {new_savedate} UTC")
         else:
             # Show stats prefix only if account type is something else than normal
             if account_type == "normal":
@@ -340,88 +315,6 @@ class OsrsCog:
         else:
             await ctx.send(f"<{page_link}>")
 
-    @commands.command(name="anagram")
-    async def get_anagram(self, ctx, *, search):
-        """
-        Search for an anagram from database. Search term is compared to all anagrams in the database with similar
-        start. In case of only one match, a full solution will be sent to discord. If multiple anagrams are found, send
-        a list of matches into discord.
-
-        :param ctx:
-        :param search: Any size of word or partial word to be used as a search term
-        """
-
-        self.bot.cursor.execute("SELECT * FROM anagrams WHERE ANAGRAM = %s;", [search])
-        results = self.bot.cursor.fetchall()
-        if not results:
-            self.bot.cursor.execute("SELECT * FROM anagrams WHERE ANAGRAM LIKE %s;", [search + '%'])
-            results = self.bot.cursor.fetchall()
-        matchlist = await self.parse_cluedata(results)
-
-        if len(results) == 1:
-            await ctx.send(f"Solution: {matchlist[0]}\nLocation: {matchlist[1]}\nChallenge answer: {matchlist[2]}\n"
-                           f"{matchlist[3]}")
-        elif not results:
-            await ctx.send("Could not find any anagrams with your search.")
-        elif len(matchlist) > 15:
-            await ctx.send(f"Found {len(matchlist)} anagrams. To prevent too long messages only max. 15 or less "
-                           f"partial matches are shown. Try to give a more accurate search term.")
-        else:
-            matchlist_str = "\n".join(matchlist)
-            await ctx.send(f"Found {len(matchlist)} anagrams:\n{matchlist_str}")
-
-    @commands.command(name="cipher")
-    async def get_cipher(self, ctx, *, search):
-        """
-        Search for a cipher from database. Search term is compared to all ciphers in the database with similar
-        start. In case of only one match, a full solution will be sent to discord. If multiple ciphers are found, send
-        a list of matches into discord.
-
-        :param ctx:
-        :param search: Any size of word or partial word to be used as a search term
-        """
-
-        self.bot.cursor.execute("SELECT * FROM ciphers WHERE CIPHER = %s;", [search])
-        results = self.bot.cursor.fetchall()
-        if not results:
-            self.bot.cursor.execute("SELECT * FROM ciphers WHERE CIPHER LIKE %s;", [search + '%'])
-            results = self.bot.cursor.fetchall()
-        matchlist = await self.parse_cluedata(results)
-
-        if len(results) == 1:
-            await ctx.send(f"Solution: {matchlist[0]}\nLocation: {matchlist[1]}\nChallenge answer: {matchlist[2]}\n"
-                           f"{matchlist[3]}")
-        elif not results:
-            await ctx.send("Could not find any ciphers with your search.")
-        elif len(matchlist) > 15:
-            await ctx.send(f"Found {len(matchlist)} ciphers. To prevent too long messages only max. 15 or less "
-                           f"partial matches are shown. Try to give a more accurate search term.")
-        else:
-            matchlist_str = "\n".join(matchlist)
-            await ctx.send(f"Found {len(matchlist)} ciphers:\n{matchlist_str}")
-
-    @commands.command(name="cryptic")
-    async def get_cryptic(self, ctx, *, search):
-        """
-        Search for a cryptic clue from database. Search term is compared to all cryptics in the database with similar
-        start. In case of only one match, a full solution will be sent to discord.
-
-        :param ctx:
-        :param search: Any size of word or partial word to be used as a search term
-        """
-
-        self.bot.cursor.execute("SELECT SOLUTION, IMAGE FROM cryptics WHERE CRYPTIC LIKE %s;", [search + '%'])
-        results = self.bot.cursor.fetchall()
-        if not results:
-            await ctx.send("Could not find any cryptic clues with your search.")
-        elif len(results) == 1:
-            solution = results[0][0]
-            image = results[0][1]
-            await ctx.send(f"{solution}\n{image}")
-        else:
-            await ctx.send(f"Found {len(results)} cryptic clues with your search. Try to give more accurate search "
-                           f"term.")
-
     @commands.command(name="stats", aliases=["ironstats", "uimstats", "hcstats", "dmmstats", "seasonstats",
                                              "tournamentstats"])
     async def get_user_highscores(self, ctx, *, username):
@@ -454,7 +347,11 @@ class OsrsCog:
         if not user_highscores:
             msg = "Could not find any highscores with that username."
         else:
-            msg = await self.make_scoretable(user_highscores, username, combat_level, account_type=account_type)
+            try:
+                msg = await self.make_scoretable(user_highscores, username, combat_level, account_type=account_type)
+            except IndexError:
+                msg = "Cannot make highscores table. There are more mini game or skill fields in Osrs highscores " \
+                      "than before. This needs to be fixed in the source code."
         await ctx.send(msg)
 
     # noinspection PyBroadException
@@ -533,24 +430,33 @@ class OsrsCog:
         try:
             minigames_difference = new_minigames_array - old_minigames_array
         except ValueError:
-            await ctx.send("The old highscores data doesn't match the new data. Unfortunately, currently the only way "
-                           "to calculate gains is to reset the stored stats for this user with "
-                           f"command `!reset {username}`.")
-            return
+            # ValueError is raised if Osrs adds new mini games to highscores and hence the dimensions of the new array
+            # differs from stored one. Try to make an array of zeros with dimensions of the old mini games array so
+            # users skills gains can be still shown.
+            await ctx.send("The old mini games data in Osrs highscores doesn't match the dimensions of new mini games "
+                           "data. Clue gains cannot be shown now, but they should be fixed after this. If this command "
+                           "continues to act weirdly, you can try to reset your stored stats using command "
+                           f"`!reset {username}`.")
+            minigames_difference = np.zeros(shape=old_skills_array.shape, dtype=int)
 
         # Multiply every rank difference by -1 so they are positive if player has climbed in highscores and vice versa
         skills_difference[:, 0] *= -1
         minigames_difference[:, 0] *= -1
         gains = skills_difference.tolist() + minigames_difference.tolist()
 
-        scoretable = await self.make_scoretable(gains, username, new_combat_level, gains=True,
-                                                old_savedate=old_savedate, new_savedate=new_savedate,
-                                                account_type=account_type)
+        try:
+            message = await self.make_scoretable(gains, username, new_combat_level, gains=True,
+                                                 old_savedate=old_savedate, new_savedate=new_savedate,
+                                                 account_type=account_type)
+        except IndexError:
+            message = "Cannot make highscores table. There are more mini game or skill fields in Osrs highscores " \
+                      "than before. This needs to be fixed in the source code. However, your new stats should still " \
+                      "be stored right."
 
         self.bot.cursor.execute("""UPDATE tracked_players SET SAVEDATE = %s, STATS = %s WHERE USERNAME = %s;""",
                                 [new_savedate, json.dumps(new_highscores), username])
         self.bot.db.commit()
-        await ctx.send(scoretable)
+        await ctx.send(message)
 
     @commands.command(name="xp", aliases=["exp", "level", "lvl"])
     async def get_experience_required(self, ctx, *, level_query):
@@ -603,33 +509,6 @@ class OsrsCog:
         format_xp_required = "{:,}".format(xp_required).replace(",", " ")
         await ctx.send(base_message + format_xp_required)
 
-    @commands.command(name="puzzle")
-    async def get_solved_puzzle(self, ctx, *, puzzle_name):
-        """
-        Give a link to an image of solved clue puzzle.
-
-        :param ctx:
-        :param puzzle_name: Name of the puzzle user wants
-        :return:
-        """
-
-        puzzle_name = puzzle_name.lower()
-        # Users tend to use shortened or simpler names for puzzles
-        if puzzle_name == "snake":
-            puzzle_name = "zulrah"
-        elif puzzle_name == "gnome":
-            puzzle_name = "gnome child"
-
-        try:
-            with open("resources\\solved_puzzles.json") as puzzle_file:
-                puzzle_links = json.load(puzzle_file)
-            puzzle_link = puzzle_links[puzzle_name]
-            message = puzzle_link
-        except KeyError:
-            message = "Couldn't find any puzzles with your search."
-
-        await ctx.send(message)
-
     @commands.command(name="update")
     async def osrs_latest_news(self, ctx):
         """
@@ -638,49 +517,31 @@ class OsrsCog:
         :param ctx:
         :return:
         """
-        game_articles = {}
-        community_articles = {}
+        news_articles = {}
 
-        link = "http://oldschool.runescape.com/"
-        osrs_response = await self.visit_website(link)
+        osrs_homepage = "http://oldschool.runescape.com/"
+        osrs_response = await self.visit_website(osrs_homepage)
         if not osrs_response:
-            await ctx.send("Osrs website answers too slowly. Try again later.")
-            return
+            await ctx.send("Osrs API answers too slowly. Try again later.")
+            return 
 
         osrs_response_html = BeautifulSoup(osrs_response, "html.parser")
 
         for div_tag in osrs_response_html.findAll("div", attrs={"class": "news-article__details"}):
             p_tag = div_tag.p
-            # Somehow the article types always end in space so leave it out
+            # The article types in their HTML always ends in space
             article_type = div_tag.span.contents[0][:-1]
             article_link = p_tag.a["href"]
             article_number = p_tag.a["id"][-1]
-            if article_type == "Game Updates":
-                game_articles[article_number] = article_link
-            elif article_type == "Community":
-                community_articles[article_number] = article_link
+            news_articles[article_number] = {"link": article_link, "type": article_type}
 
-        # Find the smallest article numbers for both article types
-        min_article_game = min(game_articles.keys())
-        min_article_community = min(community_articles.keys())
+        # Find the latest article by finding the smallest article key
+        latest_article_key = min(news_articles.keys())
 
-        game_link = game_articles[min_article_game]
-        community_link = community_articles[min_article_community]
+        article_link = news_articles[latest_article_key]["link"]
+        article_type = news_articles[latest_article_key]["type"]
 
-        await ctx.send(f"Latest news about Osrs:\n\n"
-                       f"Game: {game_link}\n"
-                       f"Community: {community_link}")
-
-    @commands.command
-    async def maps(self, ctx):
-        """
-        Send a link to clue maps wiki page.
-
-        :param ctx:
-        :return:
-        """
-        maps_link = "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Maps"
-        await ctx.send(f"<{maps_link}>")
+        await ctx.send(f"Latest news about Old School Runescape ({article_type}):\n\n{article_link}")
 
     @commands.command(name="ehp", aliases=["ironehp", "skillerehp", "f2pehp"])
     async def get_skill_ehp(self, ctx, skillname):
@@ -851,6 +712,7 @@ class OsrsCog:
         self.bot.cursor.execute("""UPDATE tracked_players SET SAVEDATE = %s, STATS = %s WHERE USERNAME = %s;""",
                                 [datetime.datetime.now().strftime("%d/%m/%Y %H:%M"), json.dumps(user_highscores),
                                  username])
+        self.bot.db.commit()
         await ctx.send(f"Stats for `{username}` successfully reset.")
 
 

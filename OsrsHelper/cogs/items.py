@@ -80,7 +80,7 @@ class ItemsCog:
         item_id = result[1]
         price_data = json.loads(await self.visit_website(api_link.format(id=item_id)))
         if not price_data:
-            await ctx.send("Osrs APi answers too slowly. Try again later.")
+            await ctx.send("Osrs API answers too slowly. Try again later.")
             return
         daily_data = price_data["daily"]
 

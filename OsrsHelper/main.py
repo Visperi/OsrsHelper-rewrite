@@ -31,7 +31,7 @@ import OsrsHelper.database as database
 
 bot = commands.Bot(command_prefix="!", case_insensitive=True)
 # bot.remove_command("help")
-initial_extensions = ["cogs.members", "cogs.osrs", "cogs.error_handler", "cogs.items"]
+initial_extensions = ["cogs.members", "cogs.osrs", "cogs.error_handler", "cogs.items", "cogs.clues"]
 
 
 @bot.event
