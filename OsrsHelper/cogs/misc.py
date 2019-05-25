@@ -42,7 +42,8 @@ class MiscCog(commands.Cog):
         """
         Get a list of crops that have their harvest times currently going on, i.e. their taste should be at best. By
         giving also a month it's possible to search which crops have their harvest seasons in given month. By default
-        the crops are separated into domestic and foreign crops based on finnish calendar and location.
+        the crops are separated into domestic and foreign crops based on finnish calendar and location. Also their
+        names are in finnish.
 
         :param ctx:
         :param month: (optional) Month name when searching for something else than current month. The default value is
@@ -53,6 +54,9 @@ class MiscCog(commands.Cog):
 
         months_fi = ["tammikuu", "helmikuu", "maaliskuu", "huhtikuu", "toukokuu", "kesäkuu", "heinäkuu", "elokuu",
                      "syyskuu", "lokakuu", "marraskuu", "joulukuu"]
+        title_fi = "Satokaudet {}lle"
+        domestic_title_fi = "Kotimaiset"
+        foreign_title_fi = "Ulkomaiset"
 
         # Month can be int only if user didn't give any input when invoking this command
         if type(month) is int:
@@ -68,9 +72,9 @@ class MiscCog(commands.Cog):
 
         domestic_crops = data[month_key]["domestic"]
         foreign_crops = data[month_key]["foreign"]
-        embed = discord.Embed(title=f"Satokaudet {month_name}lle")\
-            .add_field(name="Kotimaiset", value="\n".join(domestic_crops))\
-            .add_field(name="Ulkomaiset", value="\n".join(foreign_crops))
+        embed = discord.Embed(title=title_fi.format(month_name))\
+            .add_field(name=domestic_title_fi, value="\n".join(domestic_crops))\
+            .add_field(name=foreign_title_fi, value="\n".join(foreign_crops))
 
         await ctx.send(embed=embed)
 
