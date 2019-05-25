@@ -29,9 +29,10 @@ import traceback
 import aiohttp
 import OsrsHelper.database as database
 
+VERSION_NUMBER = "1.0.0"
 bot = commands.Bot(command_prefix="!", case_insensitive=True)
 # bot.remove_command("help")
-initial_extensions = ["cogs.members", "cogs.osrs", "cogs.error_handler", "cogs.items", "cogs.clues"]
+initial_extensions = ["cogs.discord_cog", "cogs.osrs", "cogs.error_handler", "cogs.items", "cogs.clues", "cogs.misc"]
 
 
 @bot.event
@@ -58,6 +59,7 @@ def run(name: str):
             print(f"Failed to load extension {extension}")
             traceback.print_exc()
 
+    bot.VERSION_NUMBER = VERSION_NUMBER
     bot.aiohttp_session = aiohttp.ClientSession(loop=bot.loop)
     bot.db = database.connect(db_password)
     bot.cursor = bot.db.cursor()

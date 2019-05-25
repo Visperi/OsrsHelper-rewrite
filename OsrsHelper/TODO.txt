@@ -1,12 +1,17 @@
+GENERAL
 - Move visit_website() to a place where all cogs can access it
 - Move database related things to database.py where all cogs can access them
-- Make it possible to change the prefix as a server specific command
-- Further update README
+- Update and polish README
 
 OSRS COG
-- Something to change already tracked player's name in database and something to change account type
+- Command to change already tracked player's name in database (if they change their in game name)
+- Command to change already tracked players account type (e.g. if they die on hcim or decide to go normal from ironman)
 - Old nicks command?
 
 ITEMS COG
 - Add support for user created item keys to price command
 - Add support for adding and removing item keys
+
+DISCORD COG
+- Add support for adding and removing guild specific commands
+- Add command to display guild specific commands

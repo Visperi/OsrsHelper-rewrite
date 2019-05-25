@@ -29,7 +29,7 @@ import json
 import asyncio
 
 
-class ItemsCog:
+class ItemsCog(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
@@ -45,7 +45,7 @@ class ItemsCog:
 
     @commands.command(name="price", aliases=["pricechange"])
     async def get_tradeable_price(self, ctx, *, price_search):
-        api_link = "http://services.runescape.com/m=itemdb_oldschool/api/graph/{id}.json"
+        api_link = "https://services.runescape.com/m=itemdb_oldschool/api/graph/{id}.json"
 
         # Check if user gave a multiplier
         if "*" in price_search:

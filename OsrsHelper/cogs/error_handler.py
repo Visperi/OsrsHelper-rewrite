@@ -27,40 +27,51 @@ import sys
 from discord.ext import commands
 
 
-# noinspection PyBroadException
-class CommandErrorHandler:
+class CommandErrorHandler(commands.Cog):
+    """
+    This cog handles all errors that occur when invoking a command, usually caused by an user input error.
+    """
+
     def __init__(self, bot):
         self.bot = bot
 
-    @staticmethod
-    async def on_command_error(ctx, error):
-        """The event triggered when an error is raised while invoking a command.
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, error):
+        """
+        The event triggered when an error is raised while invoking a command.
+
         ctx   : Context
         error : Exception"""
 
-        if hasattr(ctx.command, 'on_error'):
+        if hasattr(ctx.command, "on_error"):
             return
 
-        ignored = (commands.CommandNotFound, commands.UserInputError)
-        error = getattr(error, 'original', error)
+        # MissingRequiredArgument should be raised only when user doesn't give any input to command when needed
+        ignored = (commands.CommandNotFound, commands.MissingRequiredArgument)
+        error = getattr(error, "original", error)
 
         if isinstance(error, ignored):
             return
 
         if isinstance(error, commands.DisabledCommand):
-            return await ctx.send(f'{ctx.command} has been disabled.')
+            await ctx.send(f"{ctx.command} has been disabled.")
+            return
 
         elif isinstance(error, commands.NoPrivateMessage):
+            # noinspection PyBroadException
             try:
-                return await ctx.author.send(f'{ctx.command} can not be used in Private Messages.')
+                await ctx.author.send(f"{ctx.command} can not be used in Private Messages.")
+                return
             except:
                 pass
 
-        elif isinstance(error, commands.BadArgument):
-            if ctx.command.qualified_name == 'tag list':
-                return await ctx.send('I could not find that member. Please try again.')
+        # Will be raised if user gives amount of kills that is inconvertible to int in command 'loot'.
+        elif isinstance(error, commands.UserInputError):
+            if ctx.command.name == "loot":
+                await ctx.send("The amount of kills must be an integer. Give kills first and then the boss name.")
+                return
 
-        print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
+        print("Ignoring exception in command {}:".format(ctx.command), file=sys.stderr)
         traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
 
 

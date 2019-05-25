@@ -1,0 +1,288 @@
+﻿{
+    "1": {
+        "domestic": [
+            "lanttu",
+            "peruna",
+            "punajuuri",
+            "valko- ja punakaali",
+            "porkkana",
+            "salaatti"
+        ],
+        "foreign": [
+            "klementiini",
+            "appelsiini",
+            "sitruuna",
+            "bataatti",
+            "avokado",
+            "greippi",
+            "limetti",
+            "päärynä",
+            "sitruuna",
+            "viinirypäleet"
+        ]
+    },
+    "2": {
+        "domestic": [
+            "valko- ja punakaali",
+            "sipuli",
+            "peruna",
+            "lanttu",
+            "punajuuri"
+        ],
+        "foreign": [
+            "fenkoli",
+            "endiivi",
+            "parsa- ja kukkakaali",
+            "jäävuorisalaatti",
+            "granaattiomena",
+            "avokado",
+            "mango",
+            "persimoni/kaki",
+            "appelsiini",
+            "mandariini",
+            "greippi",
+            "omena",
+            "paprika",
+            "viinirypäleet"
+        ]
+    },
+    "3": {
+        "domestic": [
+            "valko- ja punakaali",
+            "sipuli",
+            "yrtit",
+            "kurkku",
+            "peruna",
+            "herkkusieni",
+            "lanttu",
+            "punajuuri",
+            "porkkana"
+        ],
+        "foreign": [
+            "kukkakaali",
+            "jäävuorisalaatti",
+            "parsakaali",
+            "appelsiini",
+            "avokado",
+            "kiivi",
+            "mandariini",
+            "sitruuna",
+            "omena",
+            "paprika",
+            "viinirypäleet"
+        ]
+    },
+    "4": {
+        "domestic": [
+            "paprika",
+            "salaatit",
+            "yrtit",
+            "kurkku",
+            "herkkusieni"
+        ],
+        "foreign": [
+            "tankoparsa",
+            "munakoiso",
+            "pinaatti",
+            "kiinan-, parsa- ja kukkakaali",
+            "jäävuorisalaatti",
+            "paprika",
+            "bataatti",
+            "papaija",
+            "mansikka",
+            "pensasmustikka",
+            "siitakesieni",
+            "rukola",
+            "sipulit",
+            "satsuma"
+        ]
+    },
+    "5": {
+        "domestic": [
+            "vihreä ja valkoinen parsa",
+            "raparperi",
+            "kevätsipuli",
+            "yrtit",
+            "tomaatit",
+            "salaatit",
+            "kurkku"
+        ],
+        "foreign": [
+            "mansikka",
+            "pensasmustikka",
+            "tankoparsa",
+            "pinaatti",
+            "munakoiso",
+            "bataatti",
+            "kukka- ja varhaiskaali",
+            "varhaisperuna",
+            "kesäkurpitsa"
+        ]
+    },
+    "6": {
+        "domestic": [
+            "nippusipuli",
+            "parsa- ja kukkakaali",
+            "paprika",
+            "avomaan salaatti",
+            "kurkku",
+            "tomaatti",
+            "varhaiskaali",
+            "varhaisporkkana",
+            "varhaisperuna",
+            "mansikka"
+        ],
+        "foreign": [
+            "munakoiso",
+            "kesäkurpitsa",
+            "viinirypäle",
+            "nektariini",
+            "aprikoosi",
+            "persikka",
+            "vesimeloni",
+            "maissi"
+        ]
+    },
+    "7": {
+        "domestic": [
+            "herne",
+            "varhaisperuna ja  -porkkana",
+            "salaatit",
+            "avomaan kurkku",
+            "chili",
+            "paprika",
+            "mansikka",
+            "vadelma",
+            "tomaatti",
+            "mustikka",
+            "parsa- ja kukkakaali",
+            "pinaatti"
+        ],
+        "foreign": [
+            "munakoiso",
+            "kirsikka",
+            "vesimeloni",
+            "viinirypäle",
+            "aprikoosi",
+            "nektariini",
+            "persikka",
+            "herkkusieni",
+            "maissi"
+        ]
+    },
+    "8": {
+        "domestic": [
+            "kesäkurpitsa",
+            "pavut",
+            "peruna",
+            "metsäsienet",
+            "parsa- ja kukkakaali",
+            "chili",
+            "paprika",
+            "salaatit",
+            "omena",
+            "mustikka",
+            "musta- ja punaviinimarja",
+            "pinaatti"
+        ],
+        "foreign": [
+            "maissi",
+            "munakoiso",
+            "melonit",
+            "nektariini",
+            "persikka",
+            "päärynä",
+            "viinirypäle"
+        ]
+    },
+    "9": {
+        "domestic": [
+            "lehti-, puna- ja valkokaali",
+            "lehtiselleri",
+            "peruna",
+            "omena",
+            "mustikka",
+            "puolukka",
+            "karpalo",
+            "lakka",
+            "metsäsienet",
+            "sipulit",
+            "porkkana",
+            "punajuuri",
+            "salaatit"
+        ],
+        "foreign": [
+            "ruusukaali",
+            "pinaatti",
+            "kurpitsa",
+            "parsakaali",
+            "fenkoli",
+            "persikka",
+            "viinirypäle",
+            "melonit"
+        ]
+    },
+    "10": {
+        "domestic": [
+            "lehti-, puna- javalkokaali",
+            "purjo",
+            "maa-artisokka",
+            "palsternakka",
+            "piparjuuri",
+            "suppilovahvero",
+            "punajuuri"
+        ],
+        "foreign": [
+            "parsa- ja ruusukaali",
+            "kurpitsa",
+            "jäävuorisalaatti",
+            "ananas",
+            "avokado",
+            "satsuma",
+            "mandariini"
+        ]
+    },
+    "11": {
+        "domestic": [
+            "kiinan-, kyssä- ja ruusukaali",
+            "purjo",
+            "maa-artisokka",
+            "palsternakka",
+            "karpalo"
+        ],
+        "foreign": [
+            "kurpitsa",
+            "ruusu- ja lehtikaali",
+            "persimoni",
+            "päärynä",
+            "satsuma",
+            "appelsiini",
+            "klementiini"
+        ]
+    },
+    "12": {
+        "domestic": [
+            "puna- ja valkokaali",
+            "porkkana",
+            "punajuuri",
+            "lanttu",
+            "peruna",
+            "maa-artisokka",
+            "palsternakka",
+            "juuriselleri",
+            "talviomena"
+        ],
+        "foreign": [
+            "ruusukaali",
+            "avokado",
+            "bataatti",
+            "jäävuorisalaatit",
+            "purjo",
+            "appelsiini",
+            "klementiini",
+            "omena",
+            "granaattiomena",
+            "kastanja"
+        ]
+    }
+}

@@ -34,7 +34,7 @@ import fractions
 import asyncio
 
 
-class OsrsCog:
+class OsrsCog(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
@@ -100,16 +100,18 @@ class OsrsCog:
         skilltable = tabulate(formatted_skills, tablefmt="orgtbl", headers=["Skill", "Rank", "Level", "Xp"])
         cluetable = tabulate(formatted_clues, tablefmt="orgtbl", headers=["Clue", "Rank", "Amount"])
         if gains:
-            table_header = "{:^46}\n{:^46}\n{}".format(f"Gains for {username}",
+            table_header = "{:^50}\n{:^50}\n{}".format(f"Gains for {username}",
                                                        f"Account type: {account_type.capitalize()}",
-                                                       f"Between {old_savedate} - {new_savedate} UTC")
+                                                       f"Between {old_savedate} - {new_savedate} UTC\n\n"
+                                                       f"Combat level: {combat_level:+}")
         else:
             # Show stats prefix only if account type is something else than normal
             if account_type == "normal":
                 account_type = ""
-            table_header = "{:^50}".format(f"{account_type.capitalize()} stats of {username}")
+            table_header = "{:^50}".format(f"{account_type.capitalize()} stats of {username}\n\n"
+                                           f"Combat level: {combat_level}")
 
-        scoretable = f"```{table_header}\n\nCombat level: {combat_level}\n\n{skilltable}\n\n{cluetable}```"
+        scoretable = f"```{table_header}\n\n{skilltable}\n\n{cluetable}```"
         return scoretable
 
     @staticmethod
@@ -163,7 +165,7 @@ class OsrsCog:
             # Return None if TimeoutError occurs
             return None
 
-    async def get_highscores(self, username: str, account_type: str = "normal"):
+    async def get_highscores_data(self, username: str, account_type: str = "normal"):
         """
         Get highscore data for given user from official Old School Runescape api. The highscore type is based on given
         account type prefix. The data inside sublists is in string format.
@@ -210,7 +212,7 @@ class OsrsCog:
             raise TypeError(f"Invalid account type: {account_type}")
 
         highscore_data = []
-        highscores_link = f"http://services.runescape.com/m={header}/index_lite.ws?player={username}"
+        highscores_link = f"https://services.runescape.com/m={header}/index_lite.ws?player={username}"
         raw_highscore_data = await self.visit_website(highscores_link)
         if not raw_highscore_data:
             # TODO: Return/raise something
@@ -244,7 +246,7 @@ class OsrsCog:
         :return:
         """
 
-        ttm_link = f"http://crystalmathlabs.com/tracker/api.php?type=ttm&player={username}"
+        ttm_link = f"https://crystalmathlabs.com/tracker/api.php?type=ttm&player={username}"
         ttm_response = await self.visit_website(ttm_link, encoding="utf-8-sig")
         if not ttm_response:
             await ctx.send("CML API answers too slowly. Try again later.")
@@ -317,7 +319,7 @@ class OsrsCog:
 
     @commands.command(name="stats", aliases=["ironstats", "uimstats", "hcstats", "dmmstats", "seasonstats",
                                              "tournamentstats"])
-    async def get_user_highscores(self, ctx, *, username):
+    async def get_user_stats(self, ctx, *, username):
         """
         Search for user highscores from official Old School Runescape api. Search supports using different highscores
         for different type of characters. If highscore data is successfully found, send the current stats into chat.
@@ -326,24 +328,24 @@ class OsrsCog:
         :param username: Account whose stats are wanted to be searched
         """
 
-        prefix_end = ctx.message.content.find("stats")
-        prefix = ctx.message.content[:prefix_end].replace("!", "")
-        if prefix == "iron":
+        command_prefix_end = ctx.message.content.find("stats")
+        command_prefix = ctx.message.content[1:command_prefix_end]
+        if command_prefix == "iron":
             account_type = "ironman"
-        elif prefix == "uim":
+        elif command_prefix == "uim":
             account_type = "uim"
-        elif prefix == "hc":
+        elif command_prefix == "hc":
             account_type = "hcim"
-        elif prefix == "dmm":
+        elif command_prefix == "dmm":
             account_type = "dmm"
-        elif prefix == "season":
+        elif command_prefix == "season":
             account_type = "seasonal"
-        elif prefix == "tournament":
+        elif command_prefix == "tournament":
             account_type = "tournament"
         else:
             account_type = "normal"
 
-        user_highscores, combat_level = await self.get_highscores(username, account_type=account_type)
+        user_highscores, combat_level = await self.get_highscores_data(username, account_type=account_type)
         if not user_highscores:
             msg = "Could not find any highscores with that username."
         else:
@@ -384,17 +386,18 @@ class OsrsCog:
             await ctx.send("Invalid account type.")
             return
 
-        current_highscores = await self.get_highscores(username, account_type)
+        current_highscores, combat_level = await self.get_highscores_data(username, account_type)
         if not current_highscores:
             await ctx.send("Could not find any highscores with that account type or username.")
             return
-        save_timestamp = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+        save_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
-            self.bot.cursor.execute("""INSERT INTO tracked_players (USERNAME, OLD_NAMES, SAVEDATE, STATS, ACC_TYPE) 
-                                    VALUES (%s, %s, %s, %s, %s);""", [username.lower(), None, save_timestamp,
-                                                                      json.dumps(current_highscores), account_type])
+            self.bot.cursor.execute("""INSERT INTO tracked_players (USERNAME, OLD_NAMES, SAVEDATE, STATS, COMBAT_LEVEL, 
+                                    ACC_TYPE) VALUES (%s, %s, %s, %s, %s, %s);""",
+                                    [username.lower(), None, save_timestamp, json.dumps(current_highscores),
+                                     combat_level, account_type])
             self.bot.db.commit()
-            msg = f"Started tracking user {username}. Account type: {account_type}"
+            msg = f"Started tracking {username}. Account type: {account_type}"
         except:
             msg = "This user is already being tracked."
         await ctx.send(msg)
@@ -408,17 +411,18 @@ class OsrsCog:
         :param ctx:
         :param username: Username whose gains are wanted. User has to be tracked for this command to work.
         """
-        self.bot.cursor.execute("""SELECT SAVEDATE, STATS, ACC_TYPE FROM tracked_players WHERE USERNAME = %s;""",
-                                [username])
+        self.bot.cursor.execute("""SELECT SAVEDATE, STATS, COMBAT_LEVEL, ACC_TYPE FROM tracked_players 
+                                   WHERE USERNAME = %s;""", [username])
         old_user_data = self.bot.cursor.fetchone()
         if not old_user_data:
             await ctx.send("This user is not being tracked.")
             return
         old_savedate = old_user_data[0]
         old_highscores = json.loads(old_user_data[1])
-        account_type = old_user_data[2]
-        new_savedate = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
-        new_highscores, new_combat_level = await self.get_highscores(username, account_type)
+        old_combat_level = old_user_data[2]
+        account_type = old_user_data[3]
+        new_savedate = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        new_highscores, new_combat_level = await self.get_highscores_data(username, account_type)
 
         # Calculate the gains and then make a score table
         new_skills_array = np.array(new_highscores[:24], dtype=int)
@@ -427,6 +431,7 @@ class OsrsCog:
         old_minigames_array = np.array(old_highscores[24:], dtype=int)
 
         skills_difference = new_skills_array - old_skills_array
+        combat_level_difference = new_combat_level - old_combat_level
         try:
             minigames_difference = new_minigames_array - old_minigames_array
         except ValueError:
@@ -445,7 +450,7 @@ class OsrsCog:
         gains = skills_difference.tolist() + minigames_difference.tolist()
 
         try:
-            message = await self.make_scoretable(gains, username, new_combat_level, gains=True,
+            message = await self.make_scoretable(gains, username, combat_level_difference, gains=True,
                                                  old_savedate=old_savedate, new_savedate=new_savedate,
                                                  account_type=account_type)
         except IndexError:
@@ -503,7 +508,7 @@ class OsrsCog:
             starting_xp_req = level_reqs[0][0]
             target_xp_req = level_reqs[1][0]
             xp_required = target_xp_req - starting_xp_req
-            base_message = f"Xp required between level gap {starting_level} - {target_level}: "
+            base_message = f"Xp required between level gap {starting_level}-{target_level}: "
 
         # Separate thousands with spaces in the xp required
         format_xp_required = "{:,}".format(xp_required).replace(",", " ")
@@ -519,7 +524,7 @@ class OsrsCog:
         """
         news_articles = {}
 
-        osrs_homepage = "http://oldschool.runescape.com/"
+        osrs_homepage = "https://oldschool.runescape.com/"
         osrs_response = await self.visit_website(osrs_homepage)
         if not osrs_response:
             await ctx.send("Osrs API answers too slowly. Try again later.")
@@ -554,16 +559,16 @@ class OsrsCog:
         :return:
         """
 
-        prefix_end = ctx.message.content.find("ehp")
-        prefix = ctx.message.content[:prefix_end].replace("!", "")
-        if not prefix:
+        command_prefix_end = ctx.message.content.find("ehp")
+        command_prefix = ctx.message.content[1:command_prefix_end]
+        if not command_prefix:
             filename = "ehp"
-        elif prefix == "iron":
+        elif command_prefix == "iron":
             filename = "ehp_ironman"
-            prefix = "ironman"
-        elif prefix == "skiller":
+            command_prefix = "ironman"
+        elif command_prefix == "skiller":
             filename = "ehp_skiller"
-        elif prefix == "f2p":
+        elif command_prefix == "f2p":
             filename = "ehp_free"
         else:
             return
@@ -611,27 +616,28 @@ class OsrsCog:
         self.bot.cursor.execute("SELECT * FROM experiences WHERE xp <= %s;", [max_ehp_xp_requirement])
         experiences = self.bot.cursor.fetchall()
         ehp_list = await self.make_ehp_list(skill_ehp_rates, experiences)
-        await ctx.send(f"{prefix.capitalize()} EHP rates for {skillname.capitalize()}:\n\n{ehp_list}")
+        await ctx.send(f"{command_prefix.capitalize()} EHP rates for {skillname.capitalize()}:\n\n{ehp_list}")
 
     @commands.command(name="loot", aliases=["kill"])
-    async def get_drop_chances(self, ctx, *, target_input):
+    async def get_drop_chances(self, ctx, amount: int, *args):
         """
         Calculate chances in percents to get unique drops from a given boss with given amount of kills. Chances are
         rounded with two decimal places.
 
         :param ctx:
-        :param target_input: Kill amount and boss name given by user
+        :param amount: Kill amount given by user. discord.py will try to convert this automatically to int. If its not
+        possible, an exception UserInputError is raised and will be handled in error_handler cog
+        :param args: A name of the boss given by user
         """
 
-        def calculate_chance(attempts: int, rate: float):
+        def calculate_chance(rate: float):
             """
             Calculate the chance for a drop with given attempts and drop rate.
 
-            :param attempts: Amount of kills/tries as an int
             :param rate: Drop rate for the drop as a float
             :return: String that has the chance to get the drop in percents
             """
-            chance = (1 - (1 - rate) ** attempts) * 100
+            chance = (1 - (1 - rate) ** amount) * 100
             if chance < 0.01:
                 chance = "< 0.01%"
             elif chance > 99.99:
@@ -643,13 +649,7 @@ class OsrsCog:
         with open("resources\\drop_rates.json") as rates_file:
             drop_rates_dict = json.load(rates_file)
 
-        target_input_list = target_input.split()
-        try:
-            amount = int(target_input_list[0])
-            boss_name = " ".join(target_input_list[1:])
-        except ValueError:
-            await ctx.send("The amount of kills must be an integer. Give kills first and then the boss name.")
-            return
+        boss_name = " ".join(args).lower()
 
         # Convert some most common nicknames to the full names
         if boss_name in ["corp", "corpo"]:
@@ -678,7 +678,7 @@ class OsrsCog:
             boss_name = "k'ril tsutsaroth"
         elif boss_name == "hydra":
             boss_name = "alchemical hydra"
-        elif boss_name in ["xoc", "raid", "raids", "raids 1", "olm"]:
+        elif boss_name in ["cox", "raid", "raids", "raids 1", "olm"]:
             boss_name = "chambers of xeric"
 
         try:
@@ -695,7 +695,7 @@ class OsrsCog:
             if boss_name == "chambers of xeric":
                 # The drop rates are based on average of 30k points. The formula for base rates can be found in wiki
                 drop_rate = float(drop_rate_frac) * 30000
-            drop_chance = calculate_chance(amount, drop_rate)
+            drop_chance = calculate_chance(drop_rate)
             drop_chances.append(f"**{itemname}:** {drop_chance}")
 
         drop_chances_joined = "\n".join(drop_chances)
@@ -703,15 +703,28 @@ class OsrsCog:
 
     @commands.command(name="reset")
     async def reset_tracked_stats(self, ctx, *,  username):
+        """
+        Reset the stored stats of an account to the latest stats from Osrs API. This is especially helpful when the old
+        stored stats have less data than new stats from Osrs API (e.g. they have added new mini games or skills  to
+        highscores)
+
+        :param ctx:
+        :param username: Username whose stats needs to be reset
+        :return:
+        """
         self.bot.cursor.execute("""SELECT ACC_TYPE FROM tracked_players WHERE USERNAME = %s;""", [username])
         account_type = self.bot.cursor.fetchone()
         if not account_type:
             await ctx.send("This user is not being tracked.")
             return
-        user_highscores = await self.get_highscores(username, account_type=account_type[0])
-        self.bot.cursor.execute("""UPDATE tracked_players SET SAVEDATE = %s, STATS = %s WHERE USERNAME = %s;""",
-                                [datetime.datetime.now().strftime("%d/%m/%Y %H:%M"), json.dumps(user_highscores),
-                                 username])
+        user_highscores, combat_level = await self.get_highscores_data(username, account_type=account_type[0])
+        if not user_highscores:
+            await ctx.send(f"Could not get stats for {username}. Try again later")
+            return
+        self.bot.cursor.execute("""UPDATE tracked_players SET SAVEDATE = %s, STATS = %s, COMBAT_LEVEL = %s 
+                                   WHERE USERNAME = %s;""",
+                                [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), json.dumps(user_highscores),
+                                 combat_level, username])
         self.bot.db.commit()
         await ctx.send(f"Stats for `{username}` successfully reset.")
 
