@@ -7,6 +7,7 @@ OSRS COG
 - Command to change already tracked player's name in database (if they change their in game name)
 - Command to change already tracked players account type (e.g. if they die on hcim or decide to go normal from ironman)
 - Old nicks command?
+- Polish and rearrange already existing code (e.g. asyncio timeout errors, merge/move some methods, ...)
 
 ITEMS COG
 - Add support for user created item keys to price command
@@ -15,3 +16,5 @@ ITEMS COG
 DISCORD COG
 - Add support for adding and removing guild specific commands
 - Add command to display guild specific commands
+- Calculator command that implements a custom made calculator
+- Add command to change a guild specific prefix

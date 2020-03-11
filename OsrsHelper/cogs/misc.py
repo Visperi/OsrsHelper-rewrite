@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019 Visperi
+Copyright (c) 2019-2020 Visperi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +49,7 @@ class MiscCog(commands.Cog):
         :param month: (optional) Month name when searching for something else than current month. The default value is
         current month as an int.
         """
-        with open("resources\\harvest_seasons.json", encoding="utf-8-sig") as data_file:
+        with open("resources\\harvest_seasons_fi.json", encoding="utf-8-sig") as data_file:
             data = json.load(data_file)
 
         months_fi = ["tammikuu", "helmikuu", "maaliskuu", "huhtikuu", "toukokuu", "kesäkuu", "heinäkuu", "elokuu",

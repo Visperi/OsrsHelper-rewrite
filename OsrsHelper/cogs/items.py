@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019 Visperi
+Copyright (c) 2019-2020 Visperi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +30,9 @@ import asyncio
 
 
 class ItemsCog(commands.Cog):
+    """
+    This cog is for all Old School Runescape item related commands.
+    """
 
     def __init__(self, bot):
         self.bot = bot
@@ -78,10 +81,13 @@ class ItemsCog(commands.Cog):
             return
         item_name = result[0]
         item_id = result[1]
-        price_data = json.loads(await self.visit_website(api_link.format(id=item_id)))
-        if not price_data:
+
+        try:
+            price_data = json.loads(await self.visit_website(api_link.format(id=item_id)))
+        except TypeError:
             await ctx.send("Osrs API answers too slowly. Try again later.")
             return
+
         daily_data = price_data["daily"]
 
         # Timestamps to get the item prices from Osrs APIs data

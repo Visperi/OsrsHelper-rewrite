@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019 Visperi
+Copyright (c) 2019-2020 Visperi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,9 @@ import json
 
 
 class ClueCog(commands.Cog):
+    """
+    This cog is for all Old School Runescape treasure trails (clue) related commands.
+    """
 
     def __init__(self, bot):
         self.bot = bot
@@ -34,7 +37,7 @@ class ClueCog(commands.Cog):
     @staticmethod
     async def parse_cluedata(results: tuple) -> list:
         """
-        Parses given matchlist for clue searches. A list with a solution or list with matches is returned based on if
+        Parses given match list for clue searches. A list with a solution or list with matches is returned based on if
         there are multiple matches or not.
 
         :param results: A tuple of results with lengths of 5

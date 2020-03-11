@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019 Visperi
+Copyright (c) 2019-2020 Visperi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -31,10 +31,15 @@ import numpy as np
 from bs4 import BeautifulSoup
 import discord
 import fractions
+from typing import Union
 import asyncio
 
 
 class OsrsCog(commands.Cog):
+    """
+    This cog handles all Old School Runescape related commands. There are quite many of them, so game item and clue
+    related commands are split into their own cogs.
+    """
 
     def __init__(self, bot):
         self.bot = bot
@@ -65,8 +70,9 @@ class OsrsCog(commands.Cog):
                               old_savedate: str = None, new_savedate: str = None, account_type: str = "normal") -> str:
         """
         Takes a list of lists that has users' highscore data and uses tabulate to make it into table format.
-        Lists and sublists need to be in the same order as in Osrs official highscores and api ([Rank, Level, Xp]).
-        Sublist elements can be either str or int, as long as they consist of 3 (skills) or 2 (minigames) elements.
+        Lists and sublists need to be in the same order as in Osrs official highscores and api
+        ([[Rank, Level, Xp], ...]). Sublist elements can be either str or int, as long as they consist of 2 or 3
+        elements (2 for mini games and 3 for skills).
 
         :param highscores_data: Data returned by Osrs highscores api splitted into list of lists
         :param username: Username of the account whose highscores are being handled
@@ -84,12 +90,11 @@ class OsrsCog(commands.Cog):
                          "Construction"]
         clue_headers = ["All", "Beginner", "Easy", "Medium", "Hard", "Elite", "Master"]
         skills = highscores_data[:24]
-        clues = highscores_data[27:]
+        clues = highscores_data[27:34]
 
-        # Separate thousands with comma. This and format_scoretable() are both static methods so calling of the class is
-        # needed
-        formatted_skills = await OsrsCog.format_scoretable(skills, gains=gains)
-        formatted_clues = await OsrsCog.format_scoretable(clues, gains=gains)
+        # Separate thousands with comma in another static method.
+        await OsrsCog.format_scoretable(skills, gains=gains)
+        await OsrsCog.format_scoretable(clues, gains=gains)
 
         # Insert row headers from above lists to highscores lists with corresponding indexes
         for index, skill in enumerate(skills):
@@ -97,8 +102,8 @@ class OsrsCog(commands.Cog):
         for index, clue in enumerate(clues):
             clue.insert(0, clue_headers[index])
 
-        skilltable = tabulate(formatted_skills, tablefmt="orgtbl", headers=["Skill", "Rank", "Level", "Xp"])
-        cluetable = tabulate(formatted_clues, tablefmt="orgtbl", headers=["Clue", "Rank", "Amount"])
+        skilltable = tabulate(skills, tablefmt="orgtbl", headers=["Skill", "Rank", "Level", "Xp"])
+        cluetable = tabulate(clues, tablefmt="orgtbl", headers=["Clue", "Rank", "Amount"])
         if gains:
             table_header = "{:^50}\n{:^50}\n{}".format(f"Gains for {username}",
                                                        f"Account type: {account_type.capitalize()}",
@@ -108,21 +113,21 @@ class OsrsCog(commands.Cog):
             # Show stats prefix only if account type is something else than normal
             if account_type == "normal":
                 account_type = ""
-            table_header = "{:^50}".format(f"{account_type.capitalize()} stats of {username}\n\n"
+            table_header = "{:^65}".format(f"{account_type.capitalize()} Stats of {username}\n\n"
                                            f"Combat level: {combat_level}")
 
         scoretable = f"```{table_header}\n\n{skilltable}\n\n{cluetable}```"
         return scoretable
 
     @staticmethod
-    async def make_ehp_list(ehp_rates: dict, experiences: tuple):
+    async def make_ehp_list(ehp_rates: dict, experiences: Union[tuple, list]):
         """
         Convert a dictionary of ehp xp's and xp rates into a string with level and xp rates. String is returned so the
         levels and rates are one below another
 
         :param ehp_rates: Dictionary of ehp xp and rates in format {xp required: xph, ...}. Values can be either str or
         int
-        :param experiences: Tuple that has all (level, xp) pairs for levels that are in ehp_dict
+        :param experiences: Tuple or list of tuples that has all (level, xp) pairs for all levels
         :return: String of 'minimum level: xph' pairs one below another
         """
 
@@ -130,9 +135,12 @@ class OsrsCog(commands.Cog):
 
         # Loop through whole dictionary for skill, convert required xp's to levels and append 'level: xph' pairs to list
         for rate in ehp_rates.items():
-            # Skip bonus xp fields
             ehp_xp_required = int(rate[0])
             ehp_xph = rate[1]
+
+            if ehp_xp_required == 200_000_000:
+                ehp_list.append(f"Lvl 127: {ehp_xph} xp/h")
+                break
 
             # Convert ehp xp's required to levels by comparing them to levels in experiences tuple
             # Closest level downwards is given
@@ -155,15 +163,12 @@ class OsrsCog(commands.Cog):
         :param encoding: Encoding in which the API or website will respond. In some cases it can be something else than
         UTF-8
         :param timeout: Amount of seconds that are waited before asyncio.TimeoutError is raised if no response is given
-        :return:
+        :raise Exception: Any exception that occurs during the GET (usually asyncio.TimeoutError after timeout)
+        :return: Html response in string format
         """
-        try:
-            async with self.bot.aiohttp_session.get(link, timeout=timeout) as r:
-                resp = await r.text(encoding=encoding)
-            return resp
-        except asyncio.TimeoutError:
-            # Return None if TimeoutError occurs
-            return None
+        async with self.bot.aiohttp_session.get(link, timeout=timeout) as r:
+            resp = await r.text(encoding=encoding)
+        return resp
 
     async def get_highscores_data(self, username: str, account_type: str = "normal"):
         """
@@ -214,10 +219,8 @@ class OsrsCog(commands.Cog):
         highscore_data = []
         highscores_link = f"https://services.runescape.com/m={header}/index_lite.ws?player={username}"
         raw_highscore_data = await self.visit_website(highscores_link)
-        if not raw_highscore_data:
-            # TODO: Return/raise something
-            return
-        elif "<title>404 - Page not found</title>" in raw_highscore_data:
+
+        if "<title>404 - Page not found</title>" in raw_highscore_data:
             return None
 
         # Appends into highscore_data in format [Rank, Level, xp] for skills and [Rank, Amount] for everything else.
@@ -247,8 +250,9 @@ class OsrsCog(commands.Cog):
         """
 
         ttm_link = f"https://crystalmathlabs.com/tracker/api.php?type=ttm&player={username}"
-        ttm_response = await self.visit_website(ttm_link, encoding="utf-8-sig")
-        if not ttm_response:
+        try:
+            ttm_response = await self.visit_website(ttm_link, encoding="utf-8-sig")
+        except asyncio.TimeoutError:
             await ctx.send("CML API answers too slowly. Try again later.")
             return
         ehp = ttm_response
@@ -318,34 +322,38 @@ class OsrsCog(commands.Cog):
             await ctx.send(f"<{page_link}>")
 
     @commands.command(name="stats", aliases=["ironstats", "uimstats", "hcstats", "dmmstats", "seasonstats",
-                                             "tournamentstats"])
+                                             "seasonalstats", "tournamentstats"])
     async def get_user_stats(self, ctx, *, username):
         """
-        Search for user highscores from official Old School Runescape api. Search supports using different highscores
-        for different type of characters. If highscore data is successfully found, send the current stats into chat.
+        Command to search for user highscores from official Old School Runescape api. Search supports using different
+        highscores for different type of characters. If highscore data is successfully found, send the current stats
+        into chat.
 
         :param ctx:
         :param username: Account whose stats are wanted to be searched
         """
 
-        command_prefix_end = ctx.message.content.find("stats")
-        command_prefix = ctx.message.content[1:command_prefix_end]
-        if command_prefix == "iron":
+        invoked_with = ctx.invoked_with
+        if invoked_with == "ironstats":
             account_type = "ironman"
-        elif command_prefix == "uim":
+        elif invoked_with == "uimstats":
             account_type = "uim"
-        elif command_prefix == "hc":
+        elif invoked_with == "hcstats":
             account_type = "hcim"
-        elif command_prefix == "dmm":
+        elif invoked_with == "dmmstats":
             account_type = "dmm"
-        elif command_prefix == "season":
-            account_type = "seasonal"
-        elif command_prefix == "tournament":
+        elif invoked_with == "tournamentstats":
             account_type = "tournament"
+        elif invoked_with == "seasonstats" or invoked_with == "seasonalstats":
+            account_type = "seasonal"
         else:
             account_type = "normal"
 
-        user_highscores, combat_level = await self.get_highscores_data(username, account_type=account_type)
+        try:
+            user_highscores, combat_level = await self.get_highscores_data(username, account_type=account_type)
+        except asyncio.TimeoutError:
+            await ctx.send("Osrs highscores answer too slowly. Try again later")
+            return
         if not user_highscores:
             msg = "Could not find any highscores with that username."
         else:
@@ -386,7 +394,11 @@ class OsrsCog(commands.Cog):
             await ctx.send("Invalid account type.")
             return
 
-        current_highscores, combat_level = await self.get_highscores_data(username, account_type)
+        try:
+            current_highscores, combat_level = await self.get_highscores_data(username, account_type)
+        except asyncio.TimeoutError:
+            await ctx.send("Osrs highscores answer too slowly. Try again later.")
+            return
         if not current_highscores:
             await ctx.send("Could not find any highscores with that account type or username.")
             return
@@ -422,7 +434,11 @@ class OsrsCog(commands.Cog):
         old_combat_level = old_user_data[2]
         account_type = old_user_data[3]
         new_savedate = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        new_highscores, new_combat_level = await self.get_highscores_data(username, account_type)
+        try:
+            new_highscores, new_combat_level = await self.get_highscores_data(username, account_type)
+        except asyncio.TimeoutError:
+            await ctx.send("Osrs highscores answers too slowly to get updated data. Try again later.")
+            return
 
         # Calculate the gains and then make a score table
         new_skills_array = np.array(new_highscores[:24], dtype=int)
@@ -559,17 +575,15 @@ class OsrsCog(commands.Cog):
         :return:
         """
 
-        command_prefix_end = ctx.message.content.find("ehp")
-        command_prefix = ctx.message.content[1:command_prefix_end]
-        if not command_prefix:
+        invoked_with = ctx.invoked_with
+        if invoked_with == "ehp":
             filename = "ehp"
-        elif command_prefix == "iron":
+        elif invoked_with == "ironehp":
             filename = "ehp_ironman"
-            command_prefix = "ironman"
-        elif command_prefix == "skiller":
+        elif invoked_with == "skillerehp":
             filename = "ehp_skiller"
-        elif command_prefix == "f2p":
-            filename = "ehp_free"
+        elif invoked_with == "f2pehp":
+            filename = "ehp_f2p"
         else:
             return
 
@@ -612,11 +626,11 @@ class OsrsCog(commands.Cog):
             await ctx.send(f"There are no EHP rates for {skillname.capitalize()} for given account type.")
             return
 
-        max_ehp_xp_requirement = list(skill_ehp_rates.keys())[-1]
-        self.bot.cursor.execute("SELECT * FROM experiences WHERE xp <= %s;", [max_ehp_xp_requirement])
+        self.bot.cursor.execute("SELECT * FROM experiences;")
         experiences = self.bot.cursor.fetchall()
-        ehp_list = await self.make_ehp_list(skill_ehp_rates, experiences)
-        await ctx.send(f"{command_prefix.capitalize()} EHP rates for {skillname.capitalize()}:\n\n{ehp_list}")
+        ehp_rates = await self.make_ehp_list(skill_ehp_rates, experiences)
+        ehp_type = filename.lstrip("ehp_").capitalize()  # This is empty for normal EHP rates
+        await ctx.send(f"{ehp_type} EHP rates for {skillname}:\n\n{ehp_rates}")
 
     @commands.command(name="loot", aliases=["kill"])
     async def get_drop_chances(self, ctx, amount: int, *args):
@@ -717,9 +731,10 @@ class OsrsCog(commands.Cog):
         if not account_type:
             await ctx.send("This user is not being tracked.")
             return
-        user_highscores, combat_level = await self.get_highscores_data(username, account_type=account_type[0])
-        if not user_highscores:
-            await ctx.send(f"Could not get stats for {username}. Try again later")
+        try:
+            user_highscores, combat_level = await self.get_highscores_data(username, account_type=account_type[0])
+        except asyncio.TimeoutError:
+            await ctx.send("Osrs highscores answer too slowly. Try again later.")
             return
         self.bot.cursor.execute("""UPDATE tracked_players SET SAVEDATE = %s, STATS = %s, COMBAT_LEVEL = %s 
                                    WHERE USERNAME = %s;""",
@@ -727,6 +742,27 @@ class OsrsCog(commands.Cog):
                                  combat_level, username])
         self.bot.db.commit()
         await ctx.send(f"Stats for `{username}` successfully reset.")
+
+    @commands.command(name="nicks")
+    async def get_old_nicks(self, ctx, *, username):
+        self.bot.cursor.execute("""SELECT OLD_NAMES FROM tracked_players WHERE USERNAME = %s;""", [username])
+        old_nicks = self.bot.cursor.fetchone()[0]
+        old_nicks_list = old_nicks.split(",")
+        cml_old_nick_link = f"https://www.crystalmathlabs.com/tracker/api.php?type=previousname&player={username}"
+        try:
+            cml_response = await self.visit_website(cml_old_nick_link, encoding="utf-8-sig")
+            if cml_response != -1 and cml_response != -2 and cml_response != -3 and cml_response != -4:
+                if cml_response not in old_nicks_list:
+                    old_nicks_list.append(cml_response)
+                    # Update database with the new previous nick
+        except asyncio.TimeoutError:
+            pass
+
+        if not old_nicks:
+            await ctx.send(f"There are no saved old nicks for {username}.")
+        else:
+            embed = discord.Embed(title=f"Old nicknames for {username}", description="\n".join(old_nicks_list))
+            await ctx.send(embed=embed)
 
 
 def setup(bot):

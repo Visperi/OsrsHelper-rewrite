@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019 Visperi
+Copyright (c) 2019-2020 Visperi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,9 @@ import platform
 
 
 class DiscordCog(commands.Cog):
+    """
+    This cog is for commands that are related mainly to Discord or don't need any resources to be invoked successfully.
+    """
 
     def __init__(self, bot):
         self.bot = bot
@@ -59,13 +62,13 @@ class DiscordCog(commands.Cog):
 
         embed = discord.Embed(title=f"{bot_name} v{self.bot.VERSION_NUMBER}").set_thumbnail(url=bot_icon_url) \
             .add_field(name="Developer", value=bot_owner, inline=False) \
-            .add_field(name="Latest update made with", value="\n".join(bot_source_info), inline=False) \
+            .add_field(name="Source made with", value="\n".join(bot_source_info), inline=False) \
             .add_field(name="External data sources used", value="\n".join(external_sources), inline=False)
 
         await ctx.send(embed=embed)
 
     @commands.command(name="me")
-    async def get_author_info(self, ctx):
+    async def get_user_info(self, ctx):
         """
         Fetch data about the author who invokes this command. This selected data is then formatted into an embed, which
         is sent to Discord chat.

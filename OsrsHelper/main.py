@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2019 Visperi
+Copyright (c) 2019-2020 Visperi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,10 +27,10 @@ import discord
 from discord.ext import commands
 import traceback
 import aiohttp
-import OsrsHelper.database as database
+from OsrsHelper import database
 
-VERSION_NUMBER = "1.0.0"
-bot = commands.Bot(command_prefix="!", case_insensitive=True)
+VERSION_NUMBER = "1.1.0"
+bot = commands.Bot(command_prefix="!")
 # bot.remove_command("help")
 initial_extensions = ["cogs.discord_cog", "cogs.osrs", "cogs.error_handler", "cogs.items", "cogs.clues", "cogs.misc"]
 

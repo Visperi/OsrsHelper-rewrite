@@ -4,7 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 1.0.0 2019-05-25
+## 1.1.0 - 2020-3-10
+
+### Added
+- `COMMANDS.md` to list all the currently available commands
+- Command `nicks` to get saved old in game nicknames for given user
+
+### Changed
+- Updated bot commands to be case sensitive
+- Changed the way of detection of what account type was requested in commands 'ehp' and 'stats'. They now use an alias 
+that was used to invoke command instead of manual parsing.
+- Changed the behavior of `visit_website` after a timeout. Exception is now returned instead of None like in any other 
+exception situations.
+
+### Fixed
+- Fixed a bug where command 'ehp' wouldn't show any xp/h rates if there were only one xp requirement. This required that 
+the queried levels and experiences from database had to be changed.
+- Fixed a bug where command 'ehp' wouldn't show xp/h rates for 200 million xp if it was in requirements
+
+### Removed
+- Removed variables `formatted_skills` and `formatted clues` from `make_scoretable()`
+
+## 1.0.0 - 2019-05-25
 
 ### Added
 - Started version numbering and maintaining a changelog
