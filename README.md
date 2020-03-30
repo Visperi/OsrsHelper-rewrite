@@ -1,7 +1,8 @@
 # OsrsHelper-rewrite
 A Discord bot mostly made for Old School Runescape related commands. This is a discord.py-rewrite version of 
 [OsrsHelper](https://github.com/Visperi/OsrsHelper). The functionality is pretty limited at the moment, but the main 
-goal is to make the code more efficient and readable.
+goal is to make the code more efficient and readable. I aim to update this project regularly, but the old 
+version already has a live user base and hence will still be in the main focus.
 
 # Commands
 For currently available commands see [COMMANDS](COMMANDS.md) file for a quick reference. At some point, more helpful 
